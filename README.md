@@ -262,4 +262,11 @@ python cli/reader_search.py --pattern "\\bTheb\\w+" --output thebes.tsv
 
 ---
 
+## Bibliography
+
+- Bird, S., E. Loper, and E. Klein. 2009. *Natural Language Processing with Python*. O'Reilly: Sebastopol, CA.
+- Bengfort, Benjamin, Rebecca Bilbro, and Tony Ojeda. 2018. *Applied Text Analysis with Python: Enabling Language-Aware Data Products with Machine Learning*. O'Reilly: Sebastopol, CA.
+
+---
+
 *Developed by [Patrick J. Burns](http://github.com/diyclassics) with Claude Opus 4.5. in January 2026.*  
