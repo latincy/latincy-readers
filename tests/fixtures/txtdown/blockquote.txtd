@@ -1,0 +1,22 @@
+---
+author: Lactantius
+work: Divinae Institutiones
+source: Example
+---
+
+--- 1: Test blockquote
+
+Nonne uidit Aeneas Priamum per aras
+
+> Sanguine foedantem quos ipse sacrauerat ignes?
+
+--- 2: Consecutive blockquotes
+
+This is the start of the sentence
+> and this is a quoted continuation
+> that spans multiple lines.
+
+--- 3: Plain text
+
+No blockquotes here at all.
+Just regular text.

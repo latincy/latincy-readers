@@ -6,16 +6,16 @@
 
 Corpus readers for Latin texts with [LatinCy](https://github.com/diyclassics/latincy) integration.
 
-Version 1.0.2; Python 3.10+; LatinCy 3.8.0+
+Version 1.1.0; Python 3.10+; LatinCy 3.8.0+
 
 ## Installation
 
 ```bash
-# Install from GitHub
-pip install git+https://github.com/diyclassics/latincy-readers.git
+# Install from PyPI
+pip install latincy-readers
 
-# With LatinCy model included
-pip install "latincy-readers[models] @ git+https://github.com/diyclassics/latincy-readers.git"
+# Install the LatinCy model separately
+pip install https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.8.0-py3-none-any.whl
 
 # For development (editable install)
 git clone https://github.com/diyclassics/latincy-readers.git
@@ -58,6 +58,8 @@ for text in reader.texts():
 | `PerseusReader` | `.xml` | No | Perseus Digital Library TEI |
 | `CamenaReader` | `.xml` | Yes | CAMENA Neo-Latin corpus |
 | `TxtdownReader` | `.txtd` | No | Txtdown format with citations |
+| `UDReader` | `.conllu` | No | Universal Dependencies CoNLL-U |
+| `LatinUDReader` | `.conllu` | Yes | All 6 Latin UD treebanks |
 
 ### Auto-Download
 
@@ -77,6 +79,41 @@ reader = TesseraeReader()
 # Manual download to specific location
 TesseraeReader.download("/path/to/destination")
 ```
+
+### Universal Dependencies Treebanks
+
+Access gold-standard linguistic annotations from Latin UD treebanks:
+
+```python
+from latincyreaders import LatinUDReader, PROIELReader
+
+# See available treebanks
+LatinUDReader.available_treebanks()
+# {'proiel': 'Vulgate, Caesar, Cicero, Palladius',
+#  'perseus': 'Classical texts from Perseus Digital Library',
+#  'ittb': 'Index Thomisticus (Thomas Aquinas)',
+#  'llct': 'Late Latin Charter Treebank',
+#  'udante': "Dante's Latin works",
+#  'circse': 'CIRCSE Latin treebank'}
+
+# Use a specific treebank
+reader = PROIELReader()
+
+# Iterate sentences with UD annotations
+for sent in reader.ud_sents():
+    print(f"{sent._.citation}: {sent.text}")
+
+# Access full UD token data
+for token in doc:
+    ud = token._.ud  # dict with all 10 CoNLL-U columns
+    print(f"{token.text}: {ud['upos']} {ud['feats']}")
+
+# Read from all treebanks at once
+reader = LatinUDReader()
+LatinUDReader.download_all()  # Download all 6 treebanks
+```
+
+**Note:** Unlike other readers, `UDReader` constructs spaCy Docs directly from gold UD annotations rather than running the spaCy NLP pipeline.
 
 ## Core API
 
@@ -242,7 +279,8 @@ if not result.is_valid:
 - [Perseus Digital Library TEI](https://www.perseus.tufts.edu/)
 - [Latin Library](https://github.com/cltk/lat_text_latin_library)
 - [CAMENA Neo-Latin](https://github.com/nevenjovanovic/camena-neolatinlit)
-- Any plaintext or TEI-XML collection
+- [Universal Dependencies Latin Treebanks](https://universaldependencies.org/) (PROIEL, Perseus, ITTB, LLCT, UDante, CIRCSE)
+- Any plaintext, TEI-XML, or CoNLL-U collection
 
 ## CLI Tools
 

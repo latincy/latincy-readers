@@ -14,7 +14,7 @@ class TestTxtdownReader:
         """Create a TxtdownReader with test fixtures."""
         return TxtdownReader(
             root=txtdown_dir,
-            fileids="*.txtd",
+            fileids="sample.txtd",
             annotation_level=AnnotationLevel.BASIC,
         )
 
@@ -146,10 +146,10 @@ class TestTxtdownSentsWithCitations:
 
     @pytest.fixture
     def reader(self, txtdown_dir):
-        """Create a TxtdownReader with test fixtures."""
+        """Create a TxtdownReader with sample.txtd fixture."""
         return TxtdownReader(
             root=txtdown_dir,
-            fileids="*.txtd",
+            fileids="sample.txtd",
             annotation_level=AnnotationLevel.BASIC,
         )
 
@@ -176,6 +176,52 @@ class TestTxtdownSentsWithCitations:
         """Metadata includes author from front matter."""
         sent = next(reader.sents_with_citations())
         assert sent["metadata"].get("author") == "Catullus"
+
+
+class TestTxtdownBlockquotes:
+    """Tests for blockquote handling in txtdown files."""
+
+    @pytest.fixture
+    def reader(self, txtdown_dir):
+        """Create a TxtdownReader with blockquote fixture."""
+        return TxtdownReader(
+            root=txtdown_dir,
+            fileids="blockquote.txtd",
+            annotation_level=AnnotationLevel.BASIC,
+        )
+
+    def test_blockquote_stripped_from_text(self, reader):
+        """Blockquote markers (>) are stripped from text."""
+        texts = list(reader.texts())
+        all_text = " ".join(texts)
+        assert ">" not in all_text
+
+    def test_blockquote_joins_with_preceding(self, reader):
+        """Blockquote line joins with preceding text."""
+        texts = list(reader.texts())
+        all_text = " ".join(texts)
+        # The blockquote should join to form a continuous sentence
+        assert "per aras Sanguine" in all_text
+
+    def test_consecutive_blockquotes_join(self, reader):
+        """Multiple consecutive blockquote lines join together."""
+        texts = list(reader.texts())
+        all_text = " ".join(texts)
+        # Should have continuation joined
+        assert "continuation that spans" in all_text
+
+    def test_blockquote_sentence_segmentation(self, reader):
+        """Sentence segmentation works correctly across blockquotes."""
+        sents = [s.text for s in reader.sents()]
+        # Find the sentence containing the Virgil quote
+        virgil_sent = None
+        for sent in sents:
+            if "Priamum" in sent and "Sanguine" in sent:
+                virgil_sent = sent
+                break
+        assert virgil_sent is not None, "Blockquote should join into single sentence"
+        # Should be one continuous sentence without > marker
+        assert ">" not in virgil_sent
 
 
 class TestTxtdownImportError:

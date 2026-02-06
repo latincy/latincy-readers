@@ -49,6 +49,10 @@ def _register_extensions() -> None:
     if not Token.has_extension("citation"):
         Token.set_extension("citation", default=None)
 
+    # UD treebank annotations (full CoNLL-U token data)
+    if not Token.has_extension("ud"):
+        Token.set_extension("ud", default=None)
+
 
 # Register on import
 _register_extensions()
