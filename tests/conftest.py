@@ -44,3 +44,9 @@ def camena_dir(fixtures_dir) -> Path:
 def txtdown_dir(fixtures_dir) -> Path:
     """Path to txtdown test fixtures."""
     return fixtures_dir / "txtdown"
+
+
+@pytest.fixture
+def ud_dir(fixtures_dir) -> Path:
+    """Path to UD (Universal Dependencies) test fixtures."""
+    return fixtures_dir / "ud"

@@ -32,6 +32,7 @@ class TxtdownReader(BaseCorpusReader):
     - Section separators with optional IDs and titles (--- 99: Title)
     - Automatic line numbering within sections
     - Citation access via section.line notation
+    - Blockquotes (> prefix) join with surrounding text for NLP
 
     Example:
         >>> reader = TxtdownReader("/path/to/texts")
@@ -76,6 +77,51 @@ class TxtdownReader(BaseCorpusReader):
     def _default_file_pattern(cls) -> str:
         """Default glob pattern for txtdown files."""
         return "**/*.txtd"
+
+    def _normalize_text(self, text: str) -> str:
+        """Normalize text, stripping blockquote markers and joining continuations.
+
+        Blockquotes (lines starting with >) are joined with the preceding
+        text to form continuous sentences for NLP processing.
+
+        Example:
+            "Nonne uidit Aeneas Priamum per aras\\n\\n> Sanguine foedantem..."
+            becomes:
+            "Nonne uidit Aeneas Priamum per aras Sanguine foedantem..."
+
+        Args:
+            text: Raw text with possible blockquote markers.
+
+        Returns:
+            Text with blockquotes stripped and joined as continuations.
+        """
+        import re
+        import unicodedata
+
+        # First do unicode normalization (from base class)
+        text = unicodedata.normalize("NFC", text)
+
+        # Process lines to handle blockquotes
+        lines = text.split("\n")
+        result_lines: list[str] = []
+
+        for line in lines:
+            # Check if this is a blockquote line
+            if line.lstrip().startswith(">"):
+                # Strip the > prefix and leading whitespace after it
+                stripped = re.sub(r"^\s*>\s?", "", line)
+                if stripped:
+                    # Join with previous line if there is one
+                    if result_lines:
+                        # Remove trailing whitespace from previous line and join
+                        prev = result_lines[-1].rstrip()
+                        result_lines[-1] = prev + " " + stripped
+                    else:
+                        result_lines.append(stripped)
+            else:
+                result_lines.append(line)
+
+        return "\n".join(result_lines)
 
     def _parse_file(self, path: Path) -> Iterator[tuple[str, dict]]:
         """Parse a txtdown file into text with metadata.

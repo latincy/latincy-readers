@@ -11,6 +11,14 @@ Readers:
     - PerseusReader: Perseus Digital Library
     - CamenaReader: CAMENA Neo-Latin corpus
     - TxtdownReader: TXT-down format (Tesserae derivative)
+    - UDReader: Universal Dependencies CoNLL-U format
+    - LatinUDReader: All 6 Latin UD treebanks with auto-download
+    - PROIELReader: Latin PROIEL treebank
+    - PerseusUDReader: Latin Perseus UD treebank
+    - ITTBReader: Index Thomisticus Treebank
+    - LLCTReader: Late Latin Charter Treebank
+    - UDanteReader: Dante's Latin works treebank
+    - CIRCSEReader: CIRCSE Latin treebank
 
 Core:
     - AnnotationLevel: Control NLP processing overhead
@@ -39,9 +47,19 @@ from latincyreaders.readers.plaintext import PlaintextReader, LatinLibraryReader
 from latincyreaders.readers.tei import TEIReader, PerseusReader
 from latincyreaders.readers.camena import CamenaReader
 from latincyreaders.readers.txtdown import TxtdownReader
+from latincyreaders.readers.ud import (
+    UDReader,
+    PROIELReader,
+    PerseusUDReader,
+    ITTBReader,
+    LLCTReader,
+    UDanteReader,
+    CIRCSEReader,
+    LatinUDReader,
+)
 from latincyreaders.utils.metadata import MetadataManager
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __all__ = [
     # Readers
     "TesseraeReader",
@@ -51,6 +69,15 @@ __all__ = [
     "PerseusReader",
     "CamenaReader",
     "TxtdownReader",
+    # Universal Dependencies readers
+    "UDReader",
+    "PROIELReader",
+    "PerseusUDReader",
+    "ITTBReader",
+    "LLCTReader",
+    "UDanteReader",
+    "CIRCSEReader",
+    "LatinUDReader",
     # Core
     "AnnotationLevel",
     "FileSelector",

@@ -1,0 +1,32 @@
+# sent_id = test-s1
+# text = Gallia est omnis divisa in partes tres.
+1	Gallia	Gallia	PROPN	_	Case=Nom|Gender=Fem|Number=Sing	4	nsubj	_	_
+2	est	sum	AUX	_	Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act	4	cop	_	_
+3	omnis	omnis	ADJ	_	Case=Nom|Gender=Fem|Number=Sing	1	amod	_	_
+4	divisa	divido	VERB	_	Case=Nom|Gender=Fem|Number=Sing|Tense=Past|VerbForm=Part|Voice=Pass	0	root	_	_
+5	in	in	ADP	_	_	6	case	_	_
+6	partes	pars	NOUN	_	Case=Acc|Gender=Fem|Number=Plur	4	obl	_	_
+7	tres	tres	NUM	_	Case=Acc|Gender=Fem|Number=Plur|NumType=Card	6	nummod	_	SpaceAfter=No
+8	.	.	PUNCT	_	_	4	punct	_	_
+
+# sent_id = test-s2
+# text = Quarum unam incolunt Belgae.
+1	Quarum	qui	PRON	_	Case=Gen|Gender=Fem|Number=Plur|PronType=Rel	2	nmod	_	_
+2	unam	unus	NUM	_	Case=Acc|Gender=Fem|Number=Sing|NumType=Card	3	obj	_	_
+3	incolunt	incolo	VERB	_	Mood=Ind|Number=Plur|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act	0	root	_	_
+4	Belgae	Belgae	PROPN	_	Case=Nom|Gender=Masc|Number=Plur	3	nsubj	_	SpaceAfter=No
+5	.	.	PUNCT	_	_	3	punct	_	_
+
+# sent_id = test-s3
+# text = Aliam Aquitani, tertiam qui ipsorum lingua Celtae appellantur.
+1	Aliam	alius	DET	_	Case=Acc|Gender=Fem|Number=Sing|PronType=Ind	0	root	_	_
+2	Aquitani	Aquitani	PROPN	_	Case=Nom|Gender=Masc|Number=Plur	1	nsubj	_	SpaceAfter=No
+3	,	,	PUNCT	_	_	4	punct	_	_
+4	tertiam	tertius	ADJ	_	Case=Acc|Gender=Fem|Number=Sing|NumType=Ord	1	conj	_	_
+5	qui	qui	PRON	_	Case=Nom|Gender=Masc|Number=Plur|PronType=Rel	8	nsubj:pass	_	_
+6	ipsorum	ipse	DET	_	Case=Gen|Gender=Masc|Number=Plur|PronType=Dem	7	nmod	_	_
+7	lingua	lingua	NOUN	_	Case=Abl|Gender=Fem|Number=Sing	8	obl	_	_
+8	Celtae	Celtae	PROPN	_	Case=Nom|Gender=Masc|Number=Plur	4	acl:relcl	_	_
+9	appellantur	appello	VERB	_	Mood=Ind|Number=Plur|Person=3|Tense=Pres|VerbForm=Fin|Voice=Pass	8	cop	_	SpaceAfter=No
+10	.	.	PUNCT	_	_	1	punct	_	_
+
