@@ -59,6 +59,8 @@ class BaseCorpusReader(ABC):
         metadata_pattern: str = "metadata/*.json",
         cache: bool = True,
         cache_maxsize: int = 128,
+        model_name: str = "la_core_web_lg",
+        lang: str = "la",
     ):
         """Initialize the corpus reader.
 
@@ -70,11 +72,15 @@ class BaseCorpusReader(ABC):
             metadata_pattern: Glob pattern for metadata JSON files. Set to None to disable.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
+            model_name: Name of the spaCy model to load for BASIC/FULL levels.
+            lang: Language code for blank model in TOKENIZE level.
         """
         self._root = Path(root).resolve()
         self._fileids_pattern = fileids or self._default_file_pattern()
         self._encoding = encoding
         self._annotation_level = annotation_level
+        self._model_name = model_name
+        self._lang = lang
         self._nlp: Language | None = None  # Lazy loaded
         self._metadata_pattern = metadata_pattern
         self._metadata: dict[str, dict[str, Any]] | None = None  # Lazy loaded
@@ -95,7 +101,11 @@ class BaseCorpusReader(ABC):
     def nlp(self) -> Language | None:
         """spaCy pipeline (lazy loaded on first access)."""
         if self._nlp is None and self._annotation_level != AnnotationLevel.NONE:
-            self._nlp = get_nlp(self._annotation_level)
+            self._nlp = get_nlp(
+                self._annotation_level,
+                model_name=self._model_name,
+                lang=self._lang,
+            )
         return self._nlp
 
     @property

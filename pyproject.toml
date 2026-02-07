@@ -12,7 +12,7 @@ requires-python = ">=3.10"
 authors = [
     { name = "Patrick J. Burns", email = "patrick@diyclassics.org" }
 ]
-keywords = ["latin", "nlp", "corpus", "spacy", "classical-languages", "latincy"]
+keywords = ["latin", "ancient-greek", "nlp", "corpus", "spacy", "classical-languages", "latincy"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",

@@ -73,11 +73,17 @@ def load_model(model_name: str = "la_core_web_lg") -> Language:
     return nlp
 
 
-def create_pipeline(level: AnnotationLevel = AnnotationLevel.BASIC) -> Language | None:
+def create_pipeline(
+    level: AnnotationLevel = AnnotationLevel.BASIC,
+    model_name: str = "la_core_web_lg",
+    lang: str = "la",
+) -> Language | None:
     """Create a spaCy pipeline based on annotation level.
 
     Args:
         level: Desired annotation level.
+        model_name: Name of the spaCy model to load for BASIC/FULL levels.
+        lang: Language code for blank model in TOKENIZE level.
 
     Returns:
         Configured spaCy pipeline, or None for NONE level.
@@ -87,24 +93,32 @@ def create_pipeline(level: AnnotationLevel = AnnotationLevel.BASIC) -> Language 
 
     if level == AnnotationLevel.TOKENIZE:
         # Minimal pipeline: just tokenization and sentence splitting
-        nlp = spacy.blank("la")
-        nlp.add_pipe("sentencizer")
+        nlp = spacy.blank(lang)
+        if lang == "grc":
+            # Greek uses ; as question mark and · (ano teleia) as a pause
+            nlp.add_pipe("sentencizer", config={"punct_chars": [".", ";", "·", ":"]})
+        else:
+            nlp.add_pipe("sentencizer")
         nlp.max_length = 2_500_000
         return nlp
 
     # BASIC or FULL: load the full model
     if level == AnnotationLevel.BASIC:
         # Disable heavy components we don't need
-        nlp = spacy.load("la_core_web_lg", disable=["ner", "parser"])
+        nlp = spacy.load(model_name, disable=["ner", "parser"])
     else:
         # FULL: everything enabled
-        nlp = spacy.load("la_core_web_lg")
+        nlp = spacy.load(model_name)
 
     nlp.max_length = 2_500_000
     return nlp
 
 
-def get_nlp(level: AnnotationLevel = AnnotationLevel.BASIC) -> Language | None:
+def get_nlp(
+    level: AnnotationLevel = AnnotationLevel.BASIC,
+    model_name: str = "la_core_web_lg",
+    lang: str = "la",
+) -> Language | None:
     """Get a spaCy pipeline for the given annotation level.
 
     This is the main entry point for getting an NLP pipeline. Pipelines are
@@ -112,6 +126,8 @@ def get_nlp(level: AnnotationLevel = AnnotationLevel.BASIC) -> Language | None:
 
     Args:
         level: Desired annotation level.
+        model_name: Name of the spaCy model to load for BASIC/FULL levels.
+        lang: Language code for blank model in TOKENIZE level.
 
     Returns:
         Configured spaCy pipeline, or None for NONE level.
@@ -121,4 +137,4 @@ def get_nlp(level: AnnotationLevel = AnnotationLevel.BASIC) -> Language | None:
         >>> doc = nlp("Arma virumque cano.")
         >>> print([(t.text, t.lemma_) for t in doc])
     """
-    return create_pipeline(level)
+    return create_pipeline(level, model_name=model_name, lang=lang)

@@ -4,7 +4,7 @@
 
 # LatinCy Readers
 
-Corpus readers for Latin texts with [LatinCy](https://github.com/diyclassics/latincy) integration.
+Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) and [OdyCy](https://centre-for-humanities-computing.github.io/odyCy/) integration.
 
 Version 1.1.0; Python 3.10+; LatinCy 3.8.0+
 
@@ -14,8 +14,11 @@ Version 1.1.0; Python 3.10+; LatinCy 3.8.0+
 # Install from PyPI
 pip install latincy-readers
 
-# Install the LatinCy model separately
+# Install the LatinCy model (for Latin texts)
 pip install https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.8.0-py3-none-any.whl
+
+# Install the OdyCy model (for Ancient Greek texts)
+pip install https://huggingface.co/chcaa/grc_odycy_joint_lg/resolve/main/grc_odycy_joint_lg-any-py3-none-any.whl
 
 # For development (editable install)
 git clone https://github.com/diyclassics/latincy-readers.git
@@ -51,7 +54,8 @@ for text in reader.texts():
 
 | Reader | Format | Auto-Download | Description |
 |--------|--------|---------------|-------------|
-| `TesseraeReader` | `.tess` | Yes | CLTK Tesserae corpus format |
+| `TesseraeReader` | `.tess` | Yes | CLTK Latin Tesserae corpus |
+| `GreekTesseraeReader` | `.tess` | Yes | CLTK Greek Tesserae corpus (OdyCy) |
 | `PlaintextReader` | `.txt` | No | Plain text files |
 | `LatinLibraryReader` | `.txt` | Yes | Latin Library corpus |
 | `TEIReader` | `.xml` | No | TEI-XML documents |
@@ -78,6 +82,32 @@ reader = TesseraeReader()
 
 # Manual download to specific location
 TesseraeReader.download("/path/to/destination")
+```
+
+### Ancient Greek (GreekTesseraeReader)
+
+Read Ancient Greek texts from the CLTK Greek Tesserae corpus using OdyCy NLP models:
+
+```python
+from latincyreaders import GreekTesseraeReader, AnnotationLevel
+
+# Auto-download Greek Tesserae corpus on first use
+reader = GreekTesseraeReader()
+
+# Use TOKENIZE level (no OdyCy model needed)
+reader = GreekTesseraeReader(annotation_level=AnnotationLevel.TOKENIZE)
+
+# Iterate over citation lines
+for citation, text in reader.texts_by_line():
+    print(f"{citation}: {text[:60]}...")
+
+# Search for Greek words
+for fid, cit, text, matches in reader.search(r"Ἀχιλ"):
+    print(f"{cit}: found {matches}")
+
+# Environment variable for custom location
+# export GRC_TESSERAE_PATH=/custom/path
+reader = GreekTesseraeReader()
 ```
 
 ### Universal Dependencies Treebanks
@@ -276,6 +306,7 @@ if not result.is_valid:
 ## Corpora Supported
 
 - [Tesserae Latin Corpus](https://github.com/cltk/lat_text_tesserae)
+- [Tesserae Greek Corpus](https://github.com/cltk/grc_text_tesserae)
 - [Perseus Digital Library TEI](https://www.perseus.tufts.edu/)
 - [Latin Library](https://github.com/cltk/lat_text_latin_library)
 - [CAMENA Neo-Latin](https://github.com/nevenjovanovic/camena-neolatinlit)
