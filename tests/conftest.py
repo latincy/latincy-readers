@@ -47,6 +47,12 @@ def txtdown_dir(fixtures_dir) -> Path:
 
 
 @pytest.fixture
+def greek_tesserae_dir(fixtures_dir) -> Path:
+    """Path to Greek Tesserae test fixtures."""
+    return fixtures_dir / "greek_tesserae"
+
+
+@pytest.fixture
 def ud_dir(fixtures_dir) -> Path:
     """Path to UD (Universal Dependencies) test fixtures."""
     return fixtures_dir / "ud"

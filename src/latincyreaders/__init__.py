@@ -5,6 +5,7 @@ This package provides readers for various Latin text corpora with spaCy integrat
 
 Readers:
     - TesseraeReader: Tesserae citation format (.tess files)
+    - GreekTesseraeReader: Greek Tesserae corpus with OdyCy integration
     - PlaintextReader: Generic plaintext files
     - LatinLibraryReader: The Latin Library corpus
     - TEIReader: TEI/XML format base class
@@ -43,6 +44,7 @@ Example:
 from latincyreaders.core.base import AnnotationLevel
 from latincyreaders.core.selector import FileSelector
 from latincyreaders.readers.tesserae import TesseraeReader
+from latincyreaders.readers.greek_tesserae import GreekTesseraeReader
 from latincyreaders.readers.plaintext import PlaintextReader, LatinLibraryReader
 from latincyreaders.readers.tei import TEIReader, PerseusReader
 from latincyreaders.readers.camena import CamenaReader
@@ -63,6 +65,7 @@ __version__ = "1.1.0"
 __all__ = [
     # Readers
     "TesseraeReader",
+    "GreekTesseraeReader",
     "PlaintextReader",
     "LatinLibraryReader",
     "TEIReader",
