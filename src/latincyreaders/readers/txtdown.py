@@ -6,6 +6,7 @@ collections with YAML metadata and section-based organization.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -22,6 +23,9 @@ try:
     TXTDOWN_AVAILABLE = True
 except ImportError:
     TXTDOWN_AVAILABLE = False
+
+# Pattern to strip blockquote markers: leading whitespace, one or more >, optional space
+_BLOCKQUOTE_PREFIX = re.compile(r"^\s*>+\s?")
 
 
 class TxtdownReader(BaseCorpusReader):
@@ -95,7 +99,6 @@ class TxtdownReader(BaseCorpusReader):
         Returns:
             Text with blockquotes stripped and joined as continuations.
         """
-        import re
         import unicodedata
 
         # First do unicode normalization (from base class)
@@ -109,7 +112,7 @@ class TxtdownReader(BaseCorpusReader):
             # Check if this is a blockquote line
             if line.lstrip().startswith(">"):
                 # Strip the > prefix and leading whitespace after it
-                stripped = re.sub(r"^\s*>\s?", "", line)
+                stripped = _BLOCKQUOTE_PREFIX.sub("", line)
                 if stripped:
                     # Join with previous line if there is one
                     if result_lines:
@@ -122,6 +125,25 @@ class TxtdownReader(BaseCorpusReader):
                 result_lines.append(line)
 
         return "\n".join(result_lines)
+
+    @staticmethod
+    def _strip_blockquote_marker(text: str) -> str:
+        """Strip blockquote prefix (>) from a line of text.
+
+        This is needed because the txtdown parser stores raw line text
+        including blockquote markers, but _normalize_text strips them
+        from the Doc text. When mapping lines back to Doc positions,
+        we need to search for the text without the marker.
+
+        Args:
+            text: Raw line text, possibly with > prefix.
+
+        Returns:
+            Text with blockquote marker removed if present.
+        """
+        if text.lstrip().startswith(">"):
+            return _BLOCKQUOTE_PREFIX.sub("", text).strip()
+        return text
 
     def _parse_file(self, path: Path) -> Iterator[tuple[str, dict]]:
         """Parse a txtdown file into text with metadata.
@@ -229,8 +251,13 @@ class TxtdownReader(BaseCorpusReader):
                 line_text = line_info["text"]
                 line_num = line_info["number"]
 
-                # Find line in doc text (handle indentation)
-                line_text_stripped = line_text.strip()
+                # Strip blockquote markers before searching in normalized doc text.
+                # The txtdown parser stores raw line text (including > prefix),
+                # but _normalize_text strips markers and joins blockquote content
+                # with the preceding line. We must search for the cleaned text.
+                line_text_stripped = self._strip_blockquote_marker(line_text)
+                if not line_text_stripped:
+                    line_text_stripped = line_text.strip()
                 line_start = doc.text.find(line_text_stripped, char_pos)
 
                 if line_start >= 0:
@@ -262,8 +289,12 @@ class TxtdownReader(BaseCorpusReader):
                 }
                 section_spans.append(section_span)
 
-            # Account for section separator
-            char_pos += 2  # "\n\n" between sections
+            # Advance past whitespace between sections. The raw text uses
+            # "\n\n" but spaCy may normalize this to a single space, so we
+            # skip forward to the next non-whitespace character rather than
+            # assuming a fixed offset.
+            while char_pos < len(doc.text) and doc.text[char_pos] in ' \n\t\r':
+                char_pos += 1
 
         doc.spans["sections"] = section_spans
         doc.spans["lines"] = line_spans

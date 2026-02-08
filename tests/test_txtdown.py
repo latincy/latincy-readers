@@ -224,6 +224,50 @@ class TestTxtdownBlockquotes:
         assert ">" not in virgil_sent
 
 
+    def test_blockquote_section_id_not_none(self, reader):
+        """Blockquote sentences must have a valid section_id, not None.
+
+        Regression test: blockquote lines were not found in normalized doc text
+        because the > marker was not stripped before searching, causing
+        section_id to be lost for sentences containing or following blockquotes.
+        """
+        sents = list(reader.sents_with_citations())
+        for sent in sents:
+            assert sent["section_id"] is not None, (
+                f"section_id is None for sentence: {sent['sentence']!r}"
+            )
+
+    def test_blockquote_line_spans_created(self, reader):
+        """Line spans are created for blockquote lines in the Doc."""
+        doc = next(reader.docs())
+        line_spans = doc.spans.get("lines", [])
+        # The blockquote fixture has lines including blockquoted ones;
+        # all should produce line spans
+        citations = [span._.citation for span in line_spans]
+        # Section 1 has 2 lines (one regular, one blockquote)
+        assert "1.1" in citations, f"Missing line 1.1 in {citations}"
+        assert "1.2" in citations, f"Missing blockquote line 1.2 in {citations}"
+        # Section 2 has 3 lines (one regular, two blockquotes)
+        assert "2.1" in citations, f"Missing line 2.1 in {citations}"
+        assert "2.2" in citations, f"Missing blockquote line 2.2 in {citations}"
+        assert "2.3" in citations, f"Missing blockquote line 2.3 in {citations}"
+
+    def test_blockquote_sents_have_correct_section(self, reader):
+        """Sentences with blockquote content report the correct section_id."""
+        sents = list(reader.sents_with_citations())
+        for sent in sents:
+            if "Sanguine" in sent["sentence"] or "Priamum" in sent["sentence"]:
+                assert sent["section_id"] == "1", (
+                    f"Blockquote sentence in section 1 has wrong section_id: "
+                    f"{sent['section_id']}"
+                )
+            if "continuation" in sent["sentence"]:
+                assert sent["section_id"] == "2", (
+                    f"Blockquote sentence in section 2 has wrong section_id: "
+                    f"{sent['section_id']}"
+                )
+
+
 class TestTxtdownImportError:
     """Tests for when txtdown package is not available."""
 
