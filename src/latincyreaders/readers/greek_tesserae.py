@@ -5,7 +5,7 @@ Tesserae corpus (grc_text_tesserae). Uses the same `.tess` citation
 format as the Latin Tesserae corpus.
 
 Requires OdyCy for BASIC/FULL annotation levels:
-    pip install https://huggingface.co/chcaa/grc_odycy_joint_lg/resolve/main/grc_odycy_joint_lg-any-py3-none-any.whl
+    pip install https://huggingface.co/chcaa/grc_odycy_joint_sm/resolve/main/grc_odycy_joint_sm-any-py3-none-any.whl
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ class GreekTesseraeReader(TesseraeReader):
     search, concordance, KWIC, ngrams, etc.) with Greek-specific defaults:
 
     - Corpus: CLTK Greek Tesserae (grc_text_tesserae)
-    - NLP model: OdyCy (grc_odycy_joint_lg)
+    - NLP model: OdyCy (grc_odycy_joint_sm)
     - Language: Ancient Greek (grc)
 
     If no root path is provided, looks for the corpus in:
@@ -170,7 +170,7 @@ class GreekTesseraeReader(TesseraeReader):
         auto_download: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
-        model_name: str = "grc_odycy_joint_lg",
+        model_name: str = "grc_odycy_joint_sm",
     ):
         """Initialize the Greek Tesserae reader.
 
