@@ -106,6 +106,13 @@ def create_pipeline(
     if level == AnnotationLevel.BASIC:
         # Disable heavy components we don't need
         nlp = spacy.load(model_name, disable=["ner", "parser"])
+        # If model has no sentence boundary component, add sentencizer
+        has_sbd = any(
+            "token.is_sent_start" in nlp.get_pipe_meta(name).assigns
+            for name in nlp.pipe_names
+        )
+        if not has_sbd:
+            nlp.add_pipe("sentencizer", first=True)
     else:
         # FULL: everything enabled
         nlp = spacy.load(model_name)
