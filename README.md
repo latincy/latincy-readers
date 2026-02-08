@@ -18,7 +18,7 @@ pip install latincy-readers
 pip install https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.8.0-py3-none-any.whl
 
 # Install the OdyCy model (for Ancient Greek texts)
-pip install https://huggingface.co/chcaa/grc_odycy_joint_lg/resolve/main/grc_odycy_joint_lg-any-py3-none-any.whl
+pip install https://huggingface.co/chcaa/grc_odycy_joint_sm/resolve/main/grc_odycy_joint_sm-any-py3-none-any.whl
 
 # For development (editable install)
 git clone https://github.com/diyclassics/latincy-readers.git

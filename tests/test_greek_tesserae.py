@@ -73,7 +73,7 @@ class TestGreekTesseraeReader:
             root=greek_tesserae_dir,
             annotation_level=AnnotationLevel.NONE,
         )
-        assert reader._model_name == "grc_odycy_joint_lg"
+        assert reader._model_name == "grc_odycy_joint_sm"
         assert reader._lang == "grc"
 
     # -------------------------------------------------------------------------
@@ -331,7 +331,7 @@ class TestGreekTesseraeNLP:
 
     @pytest.fixture
     def reader(self, greek_tesserae_dir):
-        pytest.importorskip("grc_odycy_joint_lg")
+        pytest.importorskip("grc_odycy_joint_sm")
         return GreekTesseraeReader(
             root=greek_tesserae_dir,
             fileids="*.tess",
