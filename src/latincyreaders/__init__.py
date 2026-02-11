@@ -42,6 +42,7 @@ Example:
 """
 
 from latincyreaders.core.base import AnnotationLevel
+from latincyreaders.core.combined import CombinedReader, combine
 from latincyreaders.core.selector import FileSelector
 from latincyreaders.readers.tesserae import TesseraeReader
 from latincyreaders.readers.greek_tesserae import GreekTesseraeReader
@@ -83,6 +84,8 @@ __all__ = [
     "LatinUDReader",
     # Core
     "AnnotationLevel",
+    "CombinedReader",
+    "combine",
     "FileSelector",
     "MetadataManager",
 ]
