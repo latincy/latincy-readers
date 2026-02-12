@@ -118,6 +118,9 @@ class CombinedReader:
             regex = re.compile(match, re.IGNORECASE)
             result = [f for f in result if regex.search(f)]
 
+        # Sort by local fileid (after prefix) so corpora interleave
+        result.sort(key=lambda fid: fid.split("/", 1)[1])
+
         return result
 
     def _resolve_fileids(
@@ -240,6 +243,33 @@ class CombinedReader:
     # -------------------------------------------------------------------------
     # Search & analysis methods
     # -------------------------------------------------------------------------
+
+    def search(
+        self,
+        pattern: str,
+        fileids: str | list[str] | None = None,
+        **kwargs: Any,
+    ) -> Iterator[tuple[str, str, str, list[str]]]:
+        """Fast regex search across all readers. No NLP models loaded.
+
+        Delegates to each sub-reader's search() method, which operates
+        on raw text. Only readers that implement search() are included.
+
+        Args:
+            pattern: Regex pattern to search for.
+            fileids: Namespaced file IDs, or None for all.
+            **kwargs: Passed through to each reader's search().
+
+        Yields:
+            Tuples of (namespaced_fileid, citation, text, matches).
+        """
+        for prefix, reader, fids in self._resolve_fileids(fileids):
+            if not hasattr(reader, "search"):
+                continue
+            for fileid, citation, text, matches in reader.search(
+                pattern, fileids=fids, **kwargs
+            ):
+                yield (f"{prefix}/{fileid}", citation, text, matches)
 
     def find_sents(
         self,
