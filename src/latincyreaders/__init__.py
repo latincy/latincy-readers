@@ -62,7 +62,7 @@ from latincyreaders.readers.ud import (
 )
 from latincyreaders.utils.metadata import MetadataManager
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __all__ = [
     # Readers
     "TesseraeReader",
