@@ -4,9 +4,9 @@
 
 # LatinCy Readers
 
-Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) and [OdyCy](https://centre-for-humanities-computing.github.io/odyCy/) integration.
+Corpus readers for Latin texts with [LatinCy](https://github.com/diyclassics/latincy) integration. Now also supporting Ancient Greek texts with [OdyCy](https://centre-for-humanities-computing.github.io/odyCy/).
 
-Version 1.1.0; Python 3.10+; LatinCy 3.8.0+
+Version 1.2.0; Python 3.10+; LatinCy 3.8.0+
 
 ## Installation
 
