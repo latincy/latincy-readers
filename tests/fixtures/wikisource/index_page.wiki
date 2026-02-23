@@ -1,0 +1,22 @@
+{{titulus2|Scriptor=Publius Vergilius Maro|OperaeTitulus=Aeneis|Annus=-19|Genera=Epos}}
+
+'''Aeneis''' est poema epicum a Publio Vergilio Marone compositum.
+
+== Libri ==
+
+* [[Aeneis/Liber I|Liber I]]
+* [[Aeneis/Liber II|Liber II]]
+* [[Aeneis/Liber III|Liber III]]
+* [[Aeneis/Liber IV|Liber IV]]
+* [[Aeneis/Liber V|Liber V]]
+* [[Aeneis/Liber VI|Liber VI]]
+* [[Aeneis/Liber VII|Liber VII]]
+* [[Aeneis/Liber VIII|Liber VIII]]
+* [[Aeneis/Liber IX|Liber IX]]
+* [[Aeneis/Liber X|Liber X]]
+* [[Aeneis/Liber XI|Liber XI]]
+* [[Aeneis/Liber XII|Liber XII]]
+
+[[Imago:Aeneas_fleeing_Troy.jpg]]
+{{textquality|100%}}
+[[en:Aeneid]]
