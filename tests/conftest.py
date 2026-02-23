@@ -56,3 +56,9 @@ def greek_tesserae_dir(fixtures_dir) -> Path:
 def ud_dir(fixtures_dir) -> Path:
     """Path to UD (Universal Dependencies) test fixtures."""
     return fixtures_dir / "ud"
+
+
+@pytest.fixture
+def wikisource_dir(fixtures_dir) -> Path:
+    """Path to WikiSource test fixtures."""
+    return fixtures_dir / "wikisource"
