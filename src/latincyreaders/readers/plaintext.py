@@ -137,6 +137,7 @@ class LatinLibraryReader(DownloadableCorpusMixin, PlaintextReader):
         auto_download: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         """Initialize the Latin Library reader.
 
@@ -148,6 +149,7 @@ class LatinLibraryReader(DownloadableCorpusMixin, PlaintextReader):
             auto_download: If True and corpus not found, offer to download.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
+            **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
         """
         if root is None:
             root = self._get_default_root(auto_download)
@@ -159,6 +161,7 @@ class LatinLibraryReader(DownloadableCorpusMixin, PlaintextReader):
             annotation_level=annotation_level,
             cache=cache,
             cache_maxsize=cache_maxsize,
+            **kwargs,
         )
 
     def _parse_file(self, path: Path) -> Iterator[tuple[str, dict]]:

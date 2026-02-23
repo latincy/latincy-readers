@@ -72,6 +72,7 @@ class CamenaCorpusReader(DownloadableCorpusMixin, TEIReader):
         auto_download: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         """Initialize the CAMENA reader.
 
@@ -85,6 +86,7 @@ class CamenaCorpusReader(DownloadableCorpusMixin, TEIReader):
             auto_download: If True and corpus not found, prompt to download.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
+            **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
         """
         if root is None:
             root = self._get_default_root(auto_download)
@@ -99,6 +101,7 @@ class CamenaCorpusReader(DownloadableCorpusMixin, TEIReader):
             remove_notes=remove_notes,
             cache=cache,
             cache_maxsize=cache_maxsize,
+            **kwargs,
         )
         self._include_front = include_front
 

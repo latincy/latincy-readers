@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from spacy import Language
     from spacy.tokens import Doc, Span, Token
     from latincyreaders.core.selector import FileSelector
+    from latincyreaders.nlp.backends import NLPBackend
 
 # Re-export for convenience
 __all__ = ["BaseCorpusReader", "AnnotationLevel"]
@@ -61,6 +62,7 @@ class BaseCorpusReader(ABC):
         cache_maxsize: int = 128,
         model_name: str = "la_core_web_lg",
         lang: str = "la",
+        backend: "NLPBackend | None" = None,
     ):
         """Initialize the corpus reader.
 
@@ -74,6 +76,8 @@ class BaseCorpusReader(ABC):
             cache_maxsize: Maximum number of documents to cache (default 128).
             model_name: Name of the spaCy model to load for BASIC/FULL levels.
             lang: Language code for blank model in TOKENIZE level.
+            backend: Optional NLP backend. If provided, used instead of creating
+                a pipeline from model_name/lang/annotation_level.
         """
         self._root = Path(root).resolve()
         self._fileids_pattern = fileids or self._default_file_pattern()
@@ -81,6 +85,7 @@ class BaseCorpusReader(ABC):
         self._annotation_level = annotation_level
         self._model_name = model_name
         self._lang = lang
+        self._backend = backend
         self._nlp: Language | None = None  # Lazy loaded
         self._metadata_pattern = metadata_pattern
         self._metadata: dict[str, dict[str, Any]] | None = None  # Lazy loaded
@@ -99,7 +104,12 @@ class BaseCorpusReader(ABC):
 
     @property
     def nlp(self) -> Language | None:
-        """spaCy pipeline (lazy loaded on first access)."""
+        """spaCy pipeline (lazy loaded on first access).
+
+        If a backend was provided, delegates to the backend's nlp property.
+        """
+        if self._backend is not None:
+            return self._backend.nlp
         if self._nlp is None and self._annotation_level != AnnotationLevel.NONE:
             self._nlp = get_nlp(
                 self._annotation_level,
