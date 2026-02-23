@@ -171,6 +171,7 @@ class GreekTesseraeReader(TesseraeReader):
         cache: bool = True,
         cache_maxsize: int = 128,
         model_name: str = "grc_odycy_joint_sm",
+        **kwargs,
     ):
         """Initialize the Greek Tesserae reader.
 
@@ -183,6 +184,7 @@ class GreekTesseraeReader(TesseraeReader):
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
             model_name: Name of the spaCy model to load. Defaults to OdyCy.
+            **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
         """
         super().__init__(
             root=root,
@@ -194,4 +196,5 @@ class GreekTesseraeReader(TesseraeReader):
             cache_maxsize=cache_maxsize,
             model_name=model_name,
             lang="grc",
+            **kwargs,
         )
