@@ -77,6 +77,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
         cache_maxsize: int = 128,
         model_name: str = "la_core_web_lg",
         lang: str = "la",
+        **kwargs,
     ):
         """Initialize the Tesserae reader.
 
@@ -90,6 +91,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
             cache_maxsize: Maximum number of documents to cache (default 128).
             model_name: Name of the spaCy model to load for BASIC/FULL levels.
             lang: Language code for blank model in TOKENIZE level.
+            **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
         """
         if root is None:
             root = self._get_default_root(auto_download)
@@ -97,6 +99,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
             root, fileids, encoding, annotation_level,
             cache=cache, cache_maxsize=cache_maxsize,
             model_name=model_name, lang=lang,
+            **kwargs,
         )
 
     @classmethod

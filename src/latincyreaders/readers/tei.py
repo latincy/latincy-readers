@@ -48,6 +48,7 @@ class TEIReader(BaseCorpusReader):
         remove_notes: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         """Initialize the TEI reader.
 
@@ -60,6 +61,7 @@ class TEIReader(BaseCorpusReader):
             remove_notes: Whether to remove <note> elements from text.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
+            **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
         """
         super().__init__(
             root=root,
@@ -68,6 +70,7 @@ class TEIReader(BaseCorpusReader):
             annotation_level=annotation_level,
             cache=cache,
             cache_maxsize=cache_maxsize,
+            **kwargs,
         )
         self._namespaces = namespaces
         self._remove_notes = remove_notes
@@ -306,6 +309,7 @@ class PerseusReader(TEIReader):
         remove_notes: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         """Initialize the Perseus reader.
 
@@ -317,6 +321,7 @@ class PerseusReader(TEIReader):
             remove_notes: Whether to remove <note> elements.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
+            **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
         """
         super().__init__(
             root=root,
@@ -327,6 +332,7 @@ class PerseusReader(TEIReader):
             remove_notes=remove_notes,
             cache=cache,
             cache_maxsize=cache_maxsize,
+            **kwargs,
         )
 
     def headers(self, fileids: str | list[str] | None = None) -> Iterator[dict]:
