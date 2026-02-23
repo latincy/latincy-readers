@@ -106,6 +106,7 @@ class UDReader(BaseCorpusReader):
         annotation_level: AnnotationLevel = AnnotationLevel.FULL,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         """Initialize the UD reader.
 
@@ -116,6 +117,7 @@ class UDReader(BaseCorpusReader):
             annotation_level: Ignored - UD annotations are always used.
             cache: If True, cache processed Doc objects.
             cache_maxsize: Maximum docs to cache.
+            **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
 
         Note:
             The annotation_level parameter is accepted for API consistency
@@ -526,6 +528,7 @@ class PROIELReader(DownloadableCorpusMixin, UDReader):
         auto_download: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         """Initialize the PROIEL reader.
 
@@ -536,6 +539,7 @@ class PROIELReader(DownloadableCorpusMixin, UDReader):
             auto_download: If True and corpus not found, offer to download.
             cache: If True, cache processed Doc objects.
             cache_maxsize: Maximum docs to cache.
+            **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
         """
         if root is None:
             root = self._get_default_root(auto_download)
@@ -545,6 +549,7 @@ class PROIELReader(DownloadableCorpusMixin, UDReader):
             encoding=encoding,
             cache=cache,
             cache_maxsize=cache_maxsize,
+            **kwargs,
         )
 
 
@@ -568,6 +573,7 @@ class PerseusUDReader(DownloadableCorpusMixin, UDReader):
         auto_download: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         if root is None:
             root = self._get_default_root(auto_download)
@@ -577,6 +583,7 @@ class PerseusUDReader(DownloadableCorpusMixin, UDReader):
             encoding=encoding,
             cache=cache,
             cache_maxsize=cache_maxsize,
+            **kwargs,
         )
 
 
@@ -600,6 +607,7 @@ class ITTBReader(DownloadableCorpusMixin, UDReader):
         auto_download: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         if root is None:
             root = self._get_default_root(auto_download)
@@ -609,6 +617,7 @@ class ITTBReader(DownloadableCorpusMixin, UDReader):
             encoding=encoding,
             cache=cache,
             cache_maxsize=cache_maxsize,
+            **kwargs,
         )
 
 
@@ -632,6 +641,7 @@ class LLCTReader(DownloadableCorpusMixin, UDReader):
         auto_download: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         if root is None:
             root = self._get_default_root(auto_download)
@@ -641,6 +651,7 @@ class LLCTReader(DownloadableCorpusMixin, UDReader):
             encoding=encoding,
             cache=cache,
             cache_maxsize=cache_maxsize,
+            **kwargs,
         )
 
 
@@ -664,6 +675,7 @@ class UDanteReader(DownloadableCorpusMixin, UDReader):
         auto_download: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         if root is None:
             root = self._get_default_root(auto_download)
@@ -673,6 +685,7 @@ class UDanteReader(DownloadableCorpusMixin, UDReader):
             encoding=encoding,
             cache=cache,
             cache_maxsize=cache_maxsize,
+            **kwargs,
         )
 
 
@@ -696,6 +709,7 @@ class CIRCSEReader(DownloadableCorpusMixin, UDReader):
         auto_download: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         if root is None:
             root = self._get_default_root(auto_download)
@@ -705,6 +719,7 @@ class CIRCSEReader(DownloadableCorpusMixin, UDReader):
             encoding=encoding,
             cache=cache,
             cache_maxsize=cache_maxsize,
+            **kwargs,
         )
 
 

@@ -54,6 +54,7 @@ class TxtdownReader(BaseCorpusReader):
         annotation_level: AnnotationLevel = AnnotationLevel.FULL,
         cache: bool = True,
         cache_maxsize: int = 128,
+        **kwargs,
     ):
         """Initialize the txtdown reader.
 
@@ -64,6 +65,7 @@ class TxtdownReader(BaseCorpusReader):
             annotation_level: NLP annotation level.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
+            **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
 
         Raises:
             ImportError: If txtdown package is not installed.
@@ -74,7 +76,8 @@ class TxtdownReader(BaseCorpusReader):
             )
         super().__init__(
             root, fileids, encoding, annotation_level,
-            cache=cache, cache_maxsize=cache_maxsize
+            cache=cache, cache_maxsize=cache_maxsize,
+            **kwargs,
         )
 
     @classmethod
