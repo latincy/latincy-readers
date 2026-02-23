@@ -1,0 +1,34 @@
+{{titulus2|Scriptor=Lucius Annaeus Seneca|OperaeTitulus=De vita beata|Annus=-58|Genera=Philosophia}}
+
+<div class="text">
+
+== I. ==
+
+1. Vivere, Gallio frater, omnes beate volunt, sed ad pervidendum quid sit quod beatam vitam efficiat caligant; adeoque non est facile consequi beatam vitam ut eo quisque ab ea longius recedat quo vehementius ad illam contendat, si via lapsus est; quae ubi in contrarium ducit, ipsa velocitas maioris intervalli causa fit.
+
+2. Proponendum est itaque primum quid sit quod appetamus; tunc circumspiciendum qua contendere illo celerrime possimus, intellecturi in ipso itinere, si modo rectum erit, quantum cotidie profligetur quantoque propius ab eo simus ad quod nos cupiditas naturalis impellit.
+
+3. Quamdiu quidem passim vagamur non ducem secuti sed fremitum et clamorem dissonum in diversa vocantium, conteretur vita inter errores brevis, etiam si dies noctesque bonae menti laboremus.
+
+== II. ==
+
+1. Decernatur itaque et quo tendimus et qua, non sine perito aliquo cui explorata sint ea in quae procedimus, quoniam quidem non eadem hic quae in ceteris peregrinationibus condicio est.
+
+2. In illis comprehensus aliquis locus et interrogatus incola non patitur errare; at hic tritissima quaeque via et celeberrima maxime decipit.
+
+3. Nihil ergo magis praestandum est quam ne pecorum ritu sequamur antecedentium gregem, pergentes non qua eundum est sed qua itur.
+
+== III. ==
+
+1. Atqui nulla res nos maioribus malis implicat quam quod ad rumorem componimur, optima rati ea quae magno adsensu recepta sunt quorumque exempla multa sunt, nec ad rationem sed ad similitudinem vivimus.
+
+2. Inde ista tanta coacervatio aliorum super alios ruentium. Quod in strage hominum magna evenit, cum ipse se populus premit — nemo ita cadit ut non et alium in se adtrahat, primique exitio sequentibus sunt — hoc in omni vita accidere licet videas.
+
+3. Nemo sibi tantummodo errat, sed alieni erroris et causa et auctor est. Nocet enim adplicari antecedentibus et, dum unusquisque mavult credere quam iudicare, numquam de vita iudicatur, semper creditur; versatque nos et praecipitat traditus per manus error.
+
+</div>
+
+{{finis}}
+{{textquality|75%}}
+[[en:De vita beata]]
+[[fr:De la vie heureuse]]

@@ -1,0 +1,44 @@
+{{titulus2|Scriptor=Publius Vergilius Maro|OperaeTitulus=Aeneis I|Annus=-19|Genera=Epos}}
+
+{{Liber|Ante=|Post=[[Aeneis/Liber II|Liber II]]}}
+
+<poem>
+{{versus|1}}Arma virumque cano, Troiae qui primus ab oris
+{{versus|2}}Italiam, fato profugus, Laviniaque venit
+{{versus|3}}litora, multum ille et terris iactatus et alto
+{{versus|4}}vi superum saevae memorem Iunonis ob iram;
+{{versus|5}}multa quoque et bello passus, dum conderet urbem,
+{{versus|6}}inferretque deos Latio, genus unde Latinum,
+{{versus|7}}Albanique patres, atque altae moenia Romae.
+{{versus|8}}Musa, mihi causas memora, quo numine laeso,
+{{versus|9}}quidve dolens, regina deum tot volvere casus
+{{versus|10}}insignem pietate virum, tot adire labores
+{{versus|11}}impulerit. Tantaene animis caelestibus irae?
+{{versus|12}}Urbs antiqua fuit, Tyrii tenuere coloni,
+{{versus|13}}Karthago, Italiam contra Tiberinaque longe
+{{versus|14}}ostia, dives opum studiisque asperrima belli;
+{{versus|15}}quam Iuno fertur terris magis omnibus unam
+{{versus|16}}posthabita coluisse Samo; hic illius arma,
+{{versus|17}}hic currus fuit; hoc regnum dea gentibus esse,
+{{versus|18}}si qua fata sinant, iam tum tenditque fovetque.
+{{versus|19}}Progeniem sed enim Troiano a sanguine duci
+{{versus|20}}audierat, Tyrias olim quae verteret arces;
+{{versus|21}}hinc populum late regem belloque superbum
+{{versus|22}}venturum excidio Libyae: sic volvere Parcas.
+{{versus|23}}Id metuens, veterisque memor Saturnia belli,
+{{versus|24}}prima quod ad Troiam pro caris gesserat Argis —
+{{versus|25}}necdum etiam causae irarum saevique dolores
+{{versus|26}}exciderant animo: manet alta mente repostum
+{{versus|27}}iudicium Paridis spretaeque iniuria formae,
+{{versus|28}}et genus invisum, et rapti Ganymedis honores —
+{{versus|29}}his accensa super, iactatos aequore toto
+{{versus|30}}Troas, reliquias Danaum atque immitis Achilli,
+</poem>
+
+{{Liber|Ante=|Post=[[Aeneis/Liber II|Liber II]]}}
+
+{{finis}}
+{{textquality|100%}}
+{{Intraincepti|Aeneis}}
+[[en:Aeneid/Book I]]
+[[Imago:Aeneas_fleeing_Troy.jpg]]

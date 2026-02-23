@@ -50,6 +50,7 @@ from latincyreaders.readers.plaintext import PlaintextReader, LatinLibraryReader
 from latincyreaders.readers.tei import TEIReader, PerseusReader
 from latincyreaders.readers.camena import CamenaReader
 from latincyreaders.readers.txtdown import TxtdownReader
+from latincyreaders.readers.wikisource import WikiSourceReader
 from latincyreaders.readers.ud import (
     UDReader,
     PROIELReader,
@@ -60,9 +61,10 @@ from latincyreaders.readers.ud import (
     CIRCSEReader,
     LatinUDReader,
 )
+from latincyreaders.nlp.backends import NLPBackend, SpaCyBackend
 from latincyreaders.utils.metadata import MetadataManager
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __all__ = [
     # Readers
     "TesseraeReader",
@@ -73,6 +75,7 @@ __all__ = [
     "PerseusReader",
     "CamenaReader",
     "TxtdownReader",
+    "WikiSourceReader",
     # Universal Dependencies readers
     "UDReader",
     "PROIELReader",
@@ -88,4 +91,7 @@ __all__ = [
     "combine",
     "FileSelector",
     "MetadataManager",
+    # NLP backends
+    "NLPBackend",
+    "SpaCyBackend",
 ]
