@@ -16,6 +16,7 @@ They can be exported and imported for sharing via git repositories.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from dataclasses import dataclass, field
@@ -174,6 +175,29 @@ class CanonicalAnnotationStore:
         """Return list of fileids with canonical annotations."""
         manifest = self._load_manifest()
         return list(manifest.get("files", {}).keys())
+
+    def content_hash(self, fileid: str) -> str | None:
+        """Return a SHA-256 hash of the ``.conlluc`` file for *fileid*.
+
+        This is the key to staleness detection: when the DiskCache stores
+        this hash alongside its ``.spacy`` entry, a later ``get()`` can
+        compare the stored hash against the current one.  If someone
+        corrected the ``.conlluc`` upstream and you ``git pull``, the hash
+        changes and the DocBin cache auto-invalidates.
+
+        Returns ``None`` if no canonical annotation exists for *fileid*.
+        """
+        manifest = self._load_manifest()
+        files = manifest.get("files", {})
+        entry = files.get(fileid)
+        if entry is None:
+            return None
+
+        path = self._dir / entry["filename"]
+        if not path.exists():
+            return None
+
+        return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
 
     # ------------------------------------------------------------------
     # Collection-level operations
