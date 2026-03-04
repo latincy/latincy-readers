@@ -154,6 +154,9 @@ cython_debug/
 # Claude Code
 .claude/
 
+# CoNLL-U Cache files (silver-standard, not for training)
+*.conlluc
+
 # Ruff
 .ruff_cache/
 
