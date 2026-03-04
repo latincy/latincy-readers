@@ -22,6 +22,8 @@ from latincyreaders.nlp.pipeline import AnnotationLevel, get_nlp
 if TYPE_CHECKING:
     from spacy import Language
     from spacy.tokens import Doc, Span, Token
+    from latincyreaders.cache.disk import CacheConfig, DiskCache
+    from latincyreaders.cache.vectors import SentenceVectorConfig, SentenceVectorStore
     from latincyreaders.core.selector import FileSelector
 
 # Re-export for convenience
@@ -61,6 +63,7 @@ class BaseCorpusReader(ABC):
         cache_maxsize: int = 128,
         model_name: str = "la_core_web_lg",
         lang: str = "la",
+        cache_config: "CacheConfig | None" = None,
     ):
         """Initialize the corpus reader.
 
@@ -74,6 +77,9 @@ class BaseCorpusReader(ABC):
             cache_maxsize: Maximum number of documents to cache (default 128).
             model_name: Name of the spaCy model to load for BASIC/FULL levels.
             lang: Language code for blank model in TOKENIZE level.
+            cache_config: Optional disk cache configuration. When provided with
+                ``persist=True``, annotations are saved to disk for fast reloading
+                across sessions.
         """
         self._root = Path(root).resolve()
         self._fileids_pattern = fileids or self._default_file_pattern()
@@ -91,6 +97,14 @@ class BaseCorpusReader(ABC):
         self._cache: OrderedDict[str, "Doc"] = OrderedDict()
         self._cache_hits = 0
         self._cache_misses = 0
+
+        # Disk cache
+        self._cache_config = cache_config
+        self._disk_cache: "DiskCache | None" = None
+        if cache_config is not None and cache_config.persist:
+            from latincyreaders.cache.disk import DiskCache
+
+            self._disk_cache = DiskCache(cache_config)
 
     @property
     def root(self) -> Path:
@@ -335,6 +349,8 @@ class BaseCorpusReader(ABC):
         When caching is enabled (default), documents are stored after first access
         and returned from cache on subsequent requests for the same fileid.
 
+        Lookup order: LRU memory cache → disk cache → process from source.
+
         Args:
             fileids: Files to process, or None for all.
 
@@ -351,13 +367,25 @@ class BaseCorpusReader(ABC):
         for path in self._iter_paths(fileids):
             fileid = str(path.relative_to(self._root))
 
-            # Check cache first
+            # Check LRU memory cache first
             if self._cache_enabled and fileid in self._cache:
                 self._cache_hits += 1
                 # Move to end for LRU ordering
                 self._cache.move_to_end(fileid)
                 yield self._cache[fileid]
                 continue
+
+            # Check disk cache
+            if self._disk_cache is not None:
+                disk_doc = self._disk_cache.get(fileid, nlp.vocab)
+                if disk_doc is not None:
+                    self._cache_hits += 1
+                    if self._cache_enabled:
+                        while len(self._cache) >= self._cache_maxsize:
+                            self._cache.popitem(last=False)
+                        self._cache[fileid] = disk_doc
+                    yield disk_doc
+                    continue
 
             # Cache miss - process the file
             if self._cache_enabled:
@@ -373,14 +401,112 @@ class BaseCorpusReader(ABC):
                 # Merge: JSON metadata as base, file metadata overrides
                 doc._.metadata = {**json_metadata, **file_metadata}
 
-                # Store in cache if enabled
+                # Store in LRU cache if enabled
                 if self._cache_enabled:
                     # Evict oldest if at capacity
                     while len(self._cache) >= self._cache_maxsize:
                         self._cache.popitem(last=False)
                     self._cache[fileid] = doc
 
+                # Persist to disk cache
+                if self._disk_cache is not None:
+                    self._disk_cache.put(
+                        fileid, doc,
+                        annotation_level=self._annotation_level.name,
+                        model_name=self._model_name,
+                    )
+
                 yield doc
+
+    def persist_cache(self) -> int:
+        """Force-save all in-memory cached documents to disk.
+
+        Requires a ``cache_config`` with ``persist=True``.
+
+        Returns:
+            Number of documents persisted.
+        """
+        if self._disk_cache is None:
+            raise ValueError(
+                "No disk cache configured. Pass cache_config=CacheConfig(persist=True) "
+                "to the reader constructor."
+            )
+
+        count = 0
+        for fileid, doc in self._cache.items():
+            self._disk_cache.put(
+                fileid, doc,
+                annotation_level=self._annotation_level.name,
+                model_name=self._model_name,
+            )
+            count += 1
+        return count
+
+    def warm_cache(self, fileids: str | list[str] | None = None) -> int:
+        """Pre-process and cache all (or selected) files.
+
+        Iterates over every file, triggering NLP processing and caching.
+        Useful for building a complete disk cache in one pass.
+
+        Returns:
+            Number of documents processed.
+        """
+        count = 0
+        for _doc in self.docs(fileids):
+            count += 1
+        return count
+
+    def build_vectors(
+        self,
+        config: "SentenceVectorConfig | None" = None,
+        fileids: str | list[str] | None = None,
+    ) -> "SentenceVectorStore":
+        """Build a sentence vector store from this reader's documents.
+
+        Args:
+            config: Vector store configuration. If None, uses defaults.
+            fileids: Files to include, or None for all.
+
+        Returns:
+            The populated SentenceVectorStore.
+        """
+        from latincyreaders.cache.vectors import SentenceVectorConfig, SentenceVectorStore
+
+        if config is None:
+            config = SentenceVectorConfig()
+        store = SentenceVectorStore(config)
+        store.build(self, fileids)
+        return store
+
+    def find_similar(
+        self,
+        text: str,
+        top_k: int = 10,
+        config: "SentenceVectorConfig | None" = None,
+    ) -> list[dict]:
+        """Find sentences similar to query text using stored vectors.
+
+        Requires a pre-built vector store.
+
+        Args:
+            text: Query text.
+            top_k: Number of results.
+            config: Vector store configuration. If None, uses defaults.
+
+        Returns:
+            List of result dicts with fileid, citation, text, score.
+        """
+        from latincyreaders.cache.vectors import SentenceVectorConfig, SentenceVectorStore
+
+        if config is None:
+            config = SentenceVectorConfig()
+        store = SentenceVectorStore(config)
+
+        nlp = self.nlp
+        if nlp is None:
+            raise ValueError("find_similar requires NLP pipeline for vectorisation.")
+
+        return store.similar_to_sent(text, nlp, top_k=top_k)
 
     def sents(
         self,

@@ -19,6 +19,8 @@ from latincyreaders.core.download import DownloadableCorpusMixin
 
 if TYPE_CHECKING:
     from spacy.tokens import Doc, Span
+    from latincyreaders.cache.canonical import CanonicalAnnotationStore, CanonicalConfig
+    from latincyreaders.cache.disk import CacheConfig
 
 
 @dataclass
@@ -77,6 +79,8 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
         cache_maxsize: int = 128,
         model_name: str = "la_core_web_lg",
         lang: str = "la",
+        cache_config: "CacheConfig | None" = None,
+        canonical: "CanonicalConfig | None" = None,
     ):
         """Initialize the Tesserae reader.
 
@@ -90,13 +94,26 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
             cache_maxsize: Maximum number of documents to cache (default 128).
             model_name: Name of the spaCy model to load for BASIC/FULL levels.
             lang: Language code for blank model in TOKENIZE level.
+            cache_config: Optional disk cache configuration for persistent caching.
+            canonical: Optional canonical annotation configuration. When provided,
+                the reader prefers pre-computed expert annotations over dynamic
+                pipeline processing (similar to UDReader's gold-standard approach).
         """
         if root is None:
             root = self._get_default_root(auto_download)
+
+        self._canonical_config = canonical
+        self._canonical_store: "CanonicalAnnotationStore | None" = None
+        if canonical is not None:
+            from latincyreaders.cache.canonical import CanonicalAnnotationStore
+
+            self._canonical_store = CanonicalAnnotationStore(canonical)
+
         super().__init__(
             root, fileids, encoding, annotation_level,
             cache=cache, cache_maxsize=cache_maxsize,
             model_name=model_name, lang=lang,
+            cache_config=cache_config,
         )
 
     @classmethod
@@ -187,6 +204,8 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
         Each Doc has a "lines" span group containing citation-annotated spans.
         Metadata from JSON files is merged with file-level metadata.
 
+        Lookup order: LRU memory cache → canonical store → disk cache → NLP pipeline.
+
         When caching is enabled (default), documents are stored after first access
         and returned from cache on subsequent requests for the same fileid.
 
@@ -206,13 +225,41 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
         for path in self._iter_paths(fileids):
             fileid = str(path.relative_to(self._root))
 
-            # Check cache first
+            # Check LRU memory cache first
             if self._cache_enabled and fileid in self._cache:
                 self._cache_hits += 1
-                # Move to end for LRU ordering
                 self._cache.move_to_end(fileid)
                 yield self._cache[fileid]
                 continue
+
+            # Check canonical annotation store
+            if (
+                self._canonical_store is not None
+                and self._canonical_config is not None
+                and self._canonical_config.prefer_canonical
+                and self._canonical_store.has(fileid)
+            ):
+                canonical_doc = self._canonical_store.load(fileid, nlp.vocab)
+                if canonical_doc is not None:
+                    self._cache_hits += 1
+                    if self._cache_enabled:
+                        while len(self._cache) >= self._cache_maxsize:
+                            self._cache.popitem(last=False)
+                        self._cache[fileid] = canonical_doc
+                    yield canonical_doc
+                    continue
+
+            # Check disk cache
+            if self._disk_cache is not None:
+                disk_doc = self._disk_cache.get(fileid, nlp.vocab)
+                if disk_doc is not None:
+                    self._cache_hits += 1
+                    if self._cache_enabled:
+                        while len(self._cache) >= self._cache_maxsize:
+                            self._cache.popitem(last=False)
+                        self._cache[fileid] = disk_doc
+                    yield disk_doc
+                    continue
 
             # Cache miss - process the file
             if self._cache_enabled:
@@ -233,12 +280,19 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                 lines_data = file_metadata.get("_lines", [])
                 doc.spans["lines"] = self._make_line_spans(doc, lines_data)
 
-                # Store in cache if enabled
+                # Store in LRU cache if enabled
                 if self._cache_enabled:
-                    # Evict oldest if at capacity
                     while len(self._cache) >= self._cache_maxsize:
                         self._cache.popitem(last=False)
                     self._cache[fileid] = doc
+
+                # Persist to disk cache
+                if self._disk_cache is not None:
+                    self._disk_cache.put(
+                        fileid, doc,
+                        annotation_level=self._annotation_level.name,
+                        model_name=self._model_name,
+                    )
 
                 yield doc
 
@@ -393,6 +447,73 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
 
         for fileid, citation, text, _matches in self.search(pattern, fileids, ignore_case):
             yield fileid, citation, text
+
+    def build_canonical(
+        self,
+        fileids: str | list[str] | None = None,
+        config: "CanonicalConfig | None" = None,
+    ) -> int:
+        """Process files and save results as canonical annotations.
+
+        Uses the current NLP pipeline to annotate all (or selected) files
+        and stores them in the canonical annotation store for future use.
+
+        Args:
+            fileids: Files to process, or None for all.
+            config: Canonical config. If None, uses the reader's config.
+
+        Returns:
+            Number of documents saved.
+        """
+        from latincyreaders.cache.canonical import CanonicalAnnotationStore, CanonicalConfig
+
+        if config is not None:
+            store = CanonicalAnnotationStore(config)
+        elif self._canonical_store is not None:
+            store = self._canonical_store
+        else:
+            raise ValueError(
+                "No canonical config provided. Pass config= or initialise "
+                "the reader with canonical=CanonicalConfig(...)."
+            )
+
+        return store.build_from_reader(
+            self, fileids=self._resolve_fileids(fileids),
+            model_name=self._model_name,
+        )
+
+    def compare_annotations(
+        self,
+        fileid: str,
+        config: "CanonicalConfig | None" = None,
+    ) -> list[dict]:
+        """Compare canonical annotations against dynamic NLP output.
+
+        Useful for reviewing where the pipeline diverges from the
+        community-corrected canonical annotations.
+
+        Args:
+            fileid: File to compare.
+            config: Canonical config. If None, uses the reader's config.
+
+        Returns:
+            List of token-level diff dicts.
+        """
+        from latincyreaders.cache.canonical import CanonicalAnnotationStore, CanonicalConfig
+
+        if config is not None:
+            store = CanonicalAnnotationStore(config)
+        elif self._canonical_store is not None:
+            store = self._canonical_store
+        else:
+            raise ValueError(
+                "No canonical config provided. Pass config= or initialise "
+                "the reader with canonical=CanonicalConfig(...)."
+            )
+
+        # Get the dynamically-annotated doc
+        doc = next(self.docs(fileid))
+        return store.diff(fileid, doc)
 
     def _get_citation_for_span(self, doc: "Doc", span: "Span") -> str:
         """Get Tesserae citation for a span.
