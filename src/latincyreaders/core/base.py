@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from spacy import Language
     from spacy.tokens import Doc, Span, Token
     from latincyreaders.cache.disk import CacheConfig, DiskCache
+    from latincyreaders.cache.canonical import CanonicalAnnotationStore, CanonicalConfig
     from latincyreaders.cache.vectors import SentenceVectorConfig, SentenceVectorStore
     from latincyreaders.core.selector import FileSelector
 
@@ -64,6 +65,7 @@ class BaseCorpusReader(ABC):
         model_name: str = "la_core_web_lg",
         lang: str = "la",
         cache_config: "CacheConfig | None" = None,
+        canonical_config: "CanonicalConfig | None" = None,
     ):
         """Initialize the corpus reader.
 
@@ -80,6 +82,11 @@ class BaseCorpusReader(ABC):
             cache_config: Optional disk cache configuration. When provided with
                 ``persist=True``, annotations are saved to disk for fast reloading
                 across sessions.
+            canonical_config: Optional canonical annotation store configuration.
+                When provided, the reader will check the canonical store for
+                pre-computed ``.conlluc`` annotations before running the NLP
+                pipeline.  Combined with *cache_config*, the read-through
+                path is: LRU → DocBin (disk) → .conlluc (canonical) → pipeline.
         """
         self._root = Path(root).resolve()
         self._fileids_pattern = fileids or self._default_file_pattern()
@@ -105,6 +112,14 @@ class BaseCorpusReader(ABC):
             from latincyreaders.cache.disk import DiskCache
 
             self._disk_cache = DiskCache(cache_config)
+
+        # Canonical annotation store
+        self._canonical_config = canonical_config
+        self._canonical_store: "CanonicalAnnotationStore | None" = None
+        if canonical_config is not None:
+            from latincyreaders.cache.canonical import CanonicalAnnotationStore
+
+            self._canonical_store = CanonicalAnnotationStore(canonical_config)
 
     @property
     def root(self) -> Path:
@@ -349,7 +364,13 @@ class BaseCorpusReader(ABC):
         When caching is enabled (default), documents are stored after first access
         and returned from cache on subsequent requests for the same fileid.
 
-        Lookup order: LRU memory cache → disk cache → process from source.
+        Lookup order:
+            1. LRU memory cache (instant)
+            2. DocBin disk cache — checked against canonical content hash
+               so upstream corrections auto-invalidate (fast, ~ms)
+            3. Canonical ``.conlluc`` store — parse text, warm DocBin cache
+               for next time (~10-100ms)
+            4. NLP pipeline from source — write ``.conlluc`` + DocBin (~seconds)
 
         Args:
             fileids: Files to process, or None for all.
@@ -367,17 +388,23 @@ class BaseCorpusReader(ABC):
         for path in self._iter_paths(fileids):
             fileid = str(path.relative_to(self._root))
 
-            # Check LRU memory cache first
+            # 1. Check LRU memory cache
             if self._cache_enabled and fileid in self._cache:
                 self._cache_hits += 1
-                # Move to end for LRU ordering
                 self._cache.move_to_end(fileid)
                 yield self._cache[fileid]
                 continue
 
-            # Check disk cache
+            # Compute canonical content hash for staleness detection
+            source_hash: str | None = None
+            if self._canonical_store is not None:
+                source_hash = self._canonical_store.content_hash(fileid)
+
+            # 2. Check disk cache (with staleness check against canonical)
             if self._disk_cache is not None:
-                disk_doc = self._disk_cache.get(fileid, nlp.vocab)
+                disk_doc = self._disk_cache.get(
+                    fileid, nlp.vocab, source_hash=source_hash,
+                )
                 if disk_doc is not None:
                     self._cache_hits += 1
                     if self._cache_enabled:
@@ -387,33 +414,60 @@ class BaseCorpusReader(ABC):
                     yield disk_doc
                     continue
 
-            # Cache miss - process the file
+            # 3. Check canonical store (.conlluc)
+            if self._canonical_store is not None:
+                canonical_doc = self._canonical_store.load(fileid, nlp.vocab)
+                if canonical_doc is not None:
+                    self._cache_hits += 1
+                    if self._cache_enabled:
+                        while len(self._cache) >= self._cache_maxsize:
+                            self._cache.popitem(last=False)
+                        self._cache[fileid] = canonical_doc
+
+                    # Warm the disk cache for fast access next time
+                    if self._disk_cache is not None and source_hash is not None:
+                        self._disk_cache.put(
+                            fileid, canonical_doc,
+                            annotation_level=self._annotation_level.name,
+                            model_name=self._model_name,
+                            source_hash=source_hash,
+                        )
+
+                    yield canonical_doc
+                    continue
+
+            # 4. Cache miss — process the file through NLP pipeline
             if self._cache_enabled:
                 self._cache_misses += 1
 
-            # Get JSON metadata and merge with file-level metadata
             json_metadata = self.get_metadata(fileid)
 
             for text, file_metadata in self._parse_file(path):
                 text = self._normalize_text(text)
                 doc = nlp(text)
                 doc._.fileid = fileid
-                # Merge: JSON metadata as base, file metadata overrides
                 doc._.metadata = {**json_metadata, **file_metadata}
 
-                # Store in LRU cache if enabled
                 if self._cache_enabled:
-                    # Evict oldest if at capacity
                     while len(self._cache) >= self._cache_maxsize:
                         self._cache.popitem(last=False)
                     self._cache[fileid] = doc
 
-                # Persist to disk cache
+                # Write canonical .conlluc
+                if self._canonical_store is not None:
+                    self._canonical_store.save(
+                        fileid, doc,
+                        model_name=self._model_name,
+                    )
+                    source_hash = self._canonical_store.content_hash(fileid)
+
+                # Persist to disk cache (with source_hash for staleness)
                 if self._disk_cache is not None:
                     self._disk_cache.put(
                         fileid, doc,
                         annotation_level=self._annotation_level.name,
                         model_name=self._model_name,
+                        **({"source_hash": source_hash} if source_hash else {}),
                     )
 
                 yield doc
