@@ -78,10 +78,25 @@ class DiskCache:
     # Public API
     # ------------------------------------------------------------------
 
-    def get(self, fileid: str, vocab: Vocab) -> Doc | None:
+    def get(
+        self,
+        fileid: str,
+        vocab: Vocab,
+        source_hash: str | None = None,
+    ) -> Doc | None:
         """Load a cached Doc from disk.
 
-        Returns ``None`` if the entry does not exist or has expired.
+        Returns ``None`` if the entry does not exist, has expired, or is
+        stale relative to *source_hash*.
+
+        Args:
+            fileid: File identifier.
+            vocab: spaCy Vocab for Doc reconstruction.
+            source_hash: If provided, the cache entry is considered stale
+                when its stored ``source_hash`` differs.  This enables
+                upstream correction detection: when a ``.conlluc`` file
+                changes, its content hash changes, and the DocBin cache
+                auto-invalidates.
         """
         if not self._config.persist:
             return None
@@ -93,6 +108,12 @@ class DiskCache:
 
         if self._is_expired(entry):
             return None
+
+        # Staleness check against upstream source (e.g. .conlluc content hash)
+        if source_hash is not None:
+            stored_hash = entry.get("source_hash")
+            if stored_hash != source_hash:
+                return None
 
         path = self._dir / entry["filename"]
         if not path.exists():
