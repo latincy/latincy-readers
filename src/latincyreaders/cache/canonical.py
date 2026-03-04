@@ -1,14 +1,15 @@
 """Canonical annotation store for known collections.
 
 Stores pre-computed, community-corrected annotations that can be shared
-and version-controlled. Follows the same pattern as UDReader's gold-standard
-annotations: load pre-built Docs instead of running the spaCy pipeline.
+and version-controlled. Uses the ``.conlluc`` (CoNLL-U Cache) format —
+a human-readable, silver-standard format that is clearly marked as
+machine-generated and not suitable for model training.
 
 Canonical annotations live in a directory structure::
 
     {store_root}/{collection}/
         manifest.json        — fileid map, version, contributor info
-        {hash}.spacy         — DocBin files
+        {hash}.conlluc       — CoNLL-U Cache files (silver annotations)
 
 They can be exported and imported for sharing via git repositories.
 """
@@ -22,9 +23,16 @@ from pathlib import Path
 from shutil import copytree
 from typing import Any
 
-from spacy.tokens import Doc, DocBin
+from spacy.tokens import Doc
 from spacy.vocab import Vocab
 
+from latincyreaders.cache.conlluc import (
+    CONLLUC_EXTENSION,
+    doc_to_conlluc,
+    read_conlluc,
+    validate_conlluc_header,
+    write_conlluc,
+)
 from latincyreaders.cache.disk import _fileid_hash
 
 
@@ -58,6 +66,9 @@ class CanonicalAnnotationStore:
     Canonical annotations are pre-computed and version-controlled.
     They serve as a gold-standard reference that can be community-corrected
     upstream, similar to how UDReader loads gold-standard CoNLL-U data.
+
+    Annotations are stored in ``.conlluc`` format — human-readable CoNLL-U
+    with file-level metadata marking them as silver-standard.
 
     Example::
 
@@ -103,9 +114,8 @@ class CanonicalAnnotationStore:
         if not path.exists():
             return None
 
-        doc_bin = DocBin().from_disk(path)
-        docs = list(doc_bin.get_docs(vocab))
-        return docs[0] if docs else None
+        doc, _meta = read_conlluc(path, vocab)
+        return doc
 
     def has(self, fileid: str) -> bool:
         """Check if canonical annotations exist for a fileid."""
@@ -127,12 +137,18 @@ class CanonicalAnnotationStore:
         self._dir.mkdir(parents=True, exist_ok=True)
 
         h = _fileid_hash(fileid)
-        filename = f"{h}.spacy"
+        filename = f"{h}{CONLLUC_EXTENSION}"
         path = self._dir / filename
 
-        doc_bin = DocBin(store_user_data=True)
-        doc_bin.add(doc)
-        doc_bin.to_disk(path)
+        content = doc_to_conlluc(
+            doc,
+            fileid=fileid,
+            collection=self._config.collection,
+            model_name=str(extra_meta.get("model_name", "")),
+            model_version=str(extra_meta.get("model_version", "")),
+            corrections=int(extra_meta.get("corrections", 0)),
+        )
+        write_conlluc(path, content)
 
         manifest = self._load_manifest()
         files = manifest.setdefault("files", {})
