@@ -355,10 +355,30 @@ def _resolve_head(token: Any, sent: Any, local_idx: int) -> int:
 
 
 def _format_misc(token: Any) -> str:
-    """Format MISC field (currently just SpaceAfter)."""
+    """Format MISC field (SpaceAfter, Corrected, NER)."""
+    parts: dict[str, str] = {}
     if not token.whitespace_:
-        return "SpaceAfter=No"
-    return "_"
+        parts["SpaceAfter"] = "No"
+    # Preserve Corrected= if stored in token's custom data
+    if hasattr(token, "_") and hasattr(token._, "ud"):
+        ud = token._.ud
+        if isinstance(ud, dict):
+            misc = ud.get("misc", {})
+            if isinstance(misc, dict):
+                if "Corrected" in misc:
+                    parts["Corrected"] = misc["Corrected"]
+                if "NER" in misc:
+                    parts["NER"] = misc["NER"]
+    # NER from spaCy ent_type_
+    if not parts.get("NER") and hasattr(token, "ent_type_") and token.ent_type_:
+        iob = getattr(token, "ent_iob_", "O")
+        if iob in ("B", "I"):
+            parts["NER"] = f"{iob}-{token.ent_type_}"
+        elif iob == "O":
+            pass  # don't clutter with O tags
+    if not parts:
+        return "_"
+    return "|".join(f"{k}={v}" for k, v in sorted(parts.items()))
 
 
 def _parse_feats(feats_str: str) -> dict[str, str]:
