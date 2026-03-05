@@ -36,6 +36,9 @@ dependencies = [
 vectors = [
     "numpy>=1.24",
 ]
+editor = [
+    "streamlit>=1.30",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
@@ -46,6 +49,9 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/diyclassics/latincy-readers"
 Repository = "https://github.com/diyclassics/latincy-readers"
+
+[project.scripts]
+latincy-editor = "latincyreaders.editor.app:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/latincyreaders"]
