@@ -266,6 +266,12 @@ def conlluc_to_doc(
             token.tag_ = td["xpos"]
             token.dep_ = td["deprel"]
 
+            # Morphological features
+            feats = td.get("feats", {})
+            if feats:
+                morph_str = "|".join(f"{k}={v}" for k, v in sorted(feats.items()))
+                token.set_morph(morph_str)
+
             # Resolve head
             head_idx = td["head"]
             if head_idx == 0:
