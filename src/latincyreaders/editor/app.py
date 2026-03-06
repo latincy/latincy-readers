@@ -209,166 +209,255 @@ def _edit_mode(store: CorrectionStore, submitted_by: str) -> None:
 
 
 def _render_token_editor(sent: dict[str, Any], sent_idx: int) -> None:
-    """Render the token annotation table with inline editing."""
+    """Render tabbed annotation editor — one layer per tab across all tokens."""
     tokens = sent["tokens"]
+    pending = st.session_state.get("pending_corrections", [])
 
-    # Color coding legend
-    with st.expander("Legend"):
-        st.markdown(
-            "🔵 **Silver** (pipeline output) · "
-            "🟢 **Corrected** (human-verified) · "
-            "🟡 **Modified** (unsaved change)"
+    # Collect new values in session state dicts keyed by (sent_idx, tok_idx)
+    if "edits" not in st.session_state:
+        st.session_state.edits = {}
+
+    tab_lemma, tab_upos, tab_xpos, tab_morph, tab_ner = st.tabs(
+        ["Lemma", "UPOS", "XPOS", "Morph", "NER"]
+    )
+
+    # --- Helper: status badge for a token ---
+    def _badge(tok: dict[str, Any], tok_idx: int) -> str:
+        is_pending = any(
+            c.sent_idx == sent_idx and c.token_idx == tok_idx
+            for c in pending
         )
+        if is_pending:
+            return "🟡"
+        if tok["corrected"]:
+            return "🟢"
+        return ""
 
-    for tok_idx, tok in enumerate(tokens):
-        corrected_fields = tok["corrected"]
-        form = tok["form"]
-
-        # Status indicator
-        if corrected_fields:
-            status = "🟢"
-            status_text = f"Corrected: {', '.join(corrected_fields)}"
-        else:
-            status = "🔵"
-            status_text = "Silver (pipeline)"
-
-        with st.container():
-            cols = st.columns([0.5, 1.5, 2, 1.5, 1, 2, 1.5, 0.8])
-
-            # Token ID and form
-            cols[0].markdown(f"**{tok['id']}**")
-            cols[1].markdown(f"{status} **{form}**")
-
-            # Lemma
-            key_prefix = f"s{sent_idx}_t{tok_idx}"
-            new_lemma = cols[2].text_input(
-                "Lemma",
+    # === LEMMA TAB ===
+    with tab_lemma:
+        for tok_idx, tok in enumerate(tokens):
+            badge = _badge(tok, tok_idx)
+            key = f"s{sent_idx}_t{tok_idx}_lemma"
+            cols = st.columns([2, 3])
+            cols[0].markdown(f"{badge} **{tok['form']}**")
+            cols[1].text_input(
+                "lemma",
                 value=tok["lemma"],
-                key=f"{key_prefix}_lemma",
+                key=key,
                 label_visibility="collapsed",
-                placeholder="lemma",
             )
 
-            # UPOS dropdown
-            upos_options = [""] + UPOS_TAGS
-            upos_idx = upos_options.index(tok["upos"]) if tok["upos"] in upos_options else 0
-            new_upos = cols[3].selectbox(
-                "UPOS",
+    # === UPOS TAB ===
+    with tab_upos:
+        upos_options = [""] + UPOS_TAGS
+        for tok_idx, tok in enumerate(tokens):
+            badge = _badge(tok, tok_idx)
+            key = f"s{sent_idx}_t{tok_idx}_upos"
+            upos_idx = (
+                upos_options.index(tok["upos"])
+                if tok["upos"] in upos_options else 0
+            )
+            cols = st.columns([2, 3])
+            cols[0].markdown(f"{badge} **{tok['form']}**")
+            cols[1].selectbox(
+                "upos",
                 upos_options,
                 index=upos_idx,
-                key=f"{key_prefix}_upos",
-                label_visibility="collapsed",
-                format_func=lambda x: f"{x} ({UPOS_DESCRIPTIONS[x]})" if x in UPOS_DESCRIPTIONS else x or "—",
-            )
-
-            # XPOS dropdown
-            xpos_options = ["_"] + [x for x in XPOS_TAGS if x != "_"]
-            xpos_idx = xpos_options.index(tok["xpos"]) if tok["xpos"] in xpos_options else 0
-            new_xpos = cols[4].selectbox(
-                "XPOS",
-                xpos_options,
-                index=xpos_idx,
-                key=f"{key_prefix}_xpos",
-                label_visibility="collapsed",
-                format_func=lambda x: f"{x} ({XPOS_DESCRIPTIONS[x]})" if x in XPOS_DESCRIPTIONS else x,
-            )
-
-            # Morph features (compact display with popover-style expander)
-            feats_str = tok["feats"] or "_"
-            new_feats = cols[5].text_input(
-                "Feats",
-                value=feats_str,
-                key=f"{key_prefix}_feats",
-                label_visibility="collapsed",
-                placeholder="Case=Nom|Number=Sing",
-            )
-
-            # NER
-            ner_options = NER_IOB_LABELS
-            ner_idx = ner_options.index(tok["ner"]) if tok["ner"] in ner_options else 0
-            new_ner = cols[6].selectbox(
-                "NER",
-                ner_options,
-                index=ner_idx,
-                key=f"{key_prefix}_ner",
+                key=key,
                 label_visibility="collapsed",
                 format_func=lambda x: (
-                    NER_DESCRIPTIONS.get(x.split("-")[-1], x)
-                    if x.startswith(("B-", "I-")) else
-                    NER_DESCRIPTIONS.get(x, x)
+                    f"{x} — {UPOS_DESCRIPTIONS[x]}"
+                    if x in UPOS_DESCRIPTIONS else x or "—"
+                ),
+            )
+
+    # === XPOS TAB ===
+    with tab_xpos:
+        xpos_options = ["_"] + [x for x in XPOS_TAGS if x != "_"]
+        for tok_idx, tok in enumerate(tokens):
+            badge = _badge(tok, tok_idx)
+            key = f"s{sent_idx}_t{tok_idx}_xpos"
+            xpos_idx = (
+                xpos_options.index(tok["xpos"])
+                if tok["xpos"] in xpos_options else 0
+            )
+            cols = st.columns([2, 3])
+            cols[0].markdown(f"{badge} **{tok['form']}**")
+            cols[1].selectbox(
+                "xpos",
+                xpos_options,
+                index=xpos_idx,
+                key=key,
+                label_visibility="collapsed",
+                format_func=lambda x: (
+                    f"{x} — {XPOS_DESCRIPTIONS[x]}"
+                    if x in XPOS_DESCRIPTIONS else x
+                ),
+            )
+
+    # === MORPH TAB ===
+    with tab_morph:
+        for tok_idx, tok in enumerate(tokens):
+            badge = _badge(tok, tok_idx)
+            feats_str = tok["feats"] or "_"
+            current_feats = feats_from_str(feats_str)
+            key_prefix = f"s{sent_idx}_t{tok_idx}"
+
+            with st.expander(
+                f"{badge} **{tok['form']}** — `{feats_str}`",
+            ):
+                built: dict[str, str] = {}
+                morph_cols = st.columns(3)
+                for i, (feat, values) in enumerate(
+                    sorted(MORPH_FEATURES.items())
+                ):
+                    col = morph_cols[i % 3]
+                    cur = current_feats.get(feat, "—")
+                    if cur not in values:
+                        cur = "—"
+                    val = col.selectbox(
+                        feat,
+                        ["—"] + values,
+                        index=(["—"] + values).index(cur),
+                        key=f"{key_prefix}_morph_{feat}",
+                    )
+                    if val != "—":
+                        built[feat] = val
+                new_feats = feats_to_str(built)
+                if new_feats != feats_str:
+                    st.info(f"`{feats_str}` → `{new_feats}`")
+
+    # === NER TAB ===
+    with tab_ner:
+        ner_options = NER_IOB_LABELS
+        for tok_idx, tok in enumerate(tokens):
+            badge = _badge(tok, tok_idx)
+            key = f"s{sent_idx}_t{tok_idx}_ner"
+            ner_idx = (
+                ner_options.index(tok["ner"])
+                if tok["ner"] in ner_options else 0
+            )
+            cols = st.columns([2, 3])
+            cols[0].markdown(f"{badge} **{tok['form']}**")
+            cols[1].selectbox(
+                "ner",
+                ner_options,
+                index=ner_idx,
+                key=key,
+                label_visibility="collapsed",
+                format_func=lambda x: (
+                    f"{x} — {NER_DESCRIPTIONS.get(x.split('-')[-1], '')}"
+                    if x.startswith(("B-", "I-"))
+                    else NER_DESCRIPTIONS.get(x, x)
                 ) if x else "—",
             )
 
-            # Save button for this token
-            has_change = (
-                new_lemma != tok["lemma"]
-                or new_upos != tok["upos"]
-                or new_xpos != tok["xpos"]
-                or new_feats != feats_str
-                or new_ner != tok["ner"]
-            )
+    # === STAGE ALL CHANGES button ===
+    st.divider()
+    _stage_all_changes(tokens, sent_idx)
 
-            if has_change:
-                if cols[7].button("💾", key=f"{key_prefix}_save", help="Stage this correction"):
-                    # Validate
-                    errors = []
-                    if new_lemma != tok["lemma"]:
-                        err = validate_lemma(new_lemma)
-                        if err:
-                            errors.append(err)
-                    if new_upos != tok["upos"]:
-                        err = validate_upos(new_upos)
-                        if err:
-                            errors.append(err)
-                    if new_feats != feats_str:
-                        feats = feats_from_str(new_feats)
-                        errors.extend(validate_morph(feats))
 
-                    if errors:
-                        for err in errors:
-                            st.error(err)
-                    else:
-                        corr = TokenCorrection(
-                            sent_idx=sent_idx,
-                            token_idx=tok_idx,
-                            form=form,
-                            old_lemma=tok["lemma"],
-                            old_upos=tok["upos"],
-                            old_xpos=tok["xpos"],
-                            old_feats=feats_str,
-                            old_ner=tok["ner"],
-                            new_lemma=new_lemma if new_lemma != tok["lemma"] else "",
-                            new_upos=new_upos if new_upos != tok["upos"] else "",
-                            new_xpos=new_xpos if new_xpos != tok["xpos"] else "",
-                            new_feats=new_feats if new_feats != feats_str else "",
-                            new_ner=new_ner if new_ner != tok["ner"] else "",
-                        )
-                        # Remove any existing correction for this token
-                        st.session_state.pending_corrections = [
-                            c for c in st.session_state.pending_corrections
-                            if not (c.sent_idx == sent_idx and c.token_idx == tok_idx)
-                        ]
-                        st.session_state.pending_corrections.append(corr)
-                        st.rerun()
+def _stage_all_changes(
+    tokens: list[dict[str, Any]], sent_idx: int
+) -> None:
+    """Detect and stage all changes across tabs for this sentence."""
+    changes: list[tuple[int, dict[str, Any], dict[str, str]]] = []
 
-    # Morph feature helper (expandable)
-    with st.expander("Morphological feature builder"):
-        st.markdown("Build a feature string by selecting values:")
-        morph_cols = st.columns(4)
-        built_feats: dict[str, str] = {}
-        for i, (feat, values) in enumerate(sorted(MORPH_FEATURES.items())):
-            col = morph_cols[i % 4]
-            val = col.selectbox(
-                feat,
-                ["—"] + values,
-                key=f"morph_builder_{feat}",
-            )
+    for tok_idx, tok in enumerate(tokens):
+        key_prefix = f"s{sent_idx}_t{tok_idx}"
+        feats_str = tok["feats"] or "_"
+
+        new_lemma = st.session_state.get(f"{key_prefix}_lemma", tok["lemma"])
+        new_upos = st.session_state.get(f"{key_prefix}_upos", tok["upos"])
+        new_xpos = st.session_state.get(f"{key_prefix}_xpos", tok["xpos"])
+        new_ner = st.session_state.get(f"{key_prefix}_ner", tok["ner"])
+
+        # Reconstruct morph from individual selectors
+        built: dict[str, str] = {}
+        for feat in sorted(MORPH_FEATURES):
+            val = st.session_state.get(f"{key_prefix}_morph_{feat}", "—")
             if val != "—":
-                built_feats[feat] = val
-        if built_feats:
-            result = feats_to_str(built_feats)
-            st.code(result)
-            st.caption("Copy this string into the Feats field above.")
+                built[feat] = val
+        new_feats = feats_to_str(built)
+
+        diffs: dict[str, str] = {}
+        if new_lemma != tok["lemma"]:
+            diffs["lemma"] = new_lemma
+        if new_upos != tok["upos"]:
+            diffs["upos"] = new_upos
+        if new_xpos != tok["xpos"]:
+            diffs["xpos"] = new_xpos
+        if new_feats != feats_str:
+            diffs["feats"] = new_feats
+        if new_ner != tok["ner"]:
+            diffs["ner"] = new_ner
+
+        if diffs:
+            changes.append((tok_idx, tok, diffs))
+
+    if not changes:
+        st.caption("No changes to stage.")
+        return
+
+    st.markdown(f"**{len(changes)} token(s) modified:**")
+    for tok_idx, tok, diffs in changes:
+        parts = [
+            f"{k}: `{tok.get(k, tok.get('feats') or '_') if k != 'feats' else (tok['feats'] or '_')}` → `{v}`"
+            for k, v in diffs.items()
+        ]
+        st.markdown(f"- **{tok['form']}** — {' · '.join(parts)}")
+
+    if st.button("Stage all changes", type="primary"):
+        errors: list[str] = []
+        for tok_idx, tok, diffs in changes:
+            form = tok["form"]
+            if "lemma" in diffs:
+                err = validate_lemma(diffs["lemma"])
+                if err:
+                    errors.append(f"{form}: {err}")
+            if "upos" in diffs:
+                err = validate_upos(diffs["upos"])
+                if err:
+                    errors.append(f"{form}: {err}")
+            if "feats" in diffs:
+                for w in validate_morph(feats_from_str(diffs["feats"])):
+                    errors.append(f"{form}: {w}")
+
+        if errors:
+            for err in errors:
+                st.error(err)
+            return
+
+        feats_str_map = {
+            tok_idx: tok["feats"] or "_"
+            for tok_idx, tok, _ in changes
+        }
+        for tok_idx, tok, diffs in changes:
+            feats_str = feats_str_map[tok_idx]
+            corr = TokenCorrection(
+                sent_idx=sent_idx,
+                token_idx=tok_idx,
+                form=tok["form"],
+                old_lemma=tok["lemma"],
+                old_upos=tok["upos"],
+                old_xpos=tok["xpos"],
+                old_feats=feats_str,
+                old_ner=tok["ner"],
+                new_lemma=diffs.get("lemma", ""),
+                new_upos=diffs.get("upos", ""),
+                new_xpos=diffs.get("xpos", ""),
+                new_feats=diffs.get("feats", ""),
+                new_ner=diffs.get("ner", ""),
+            )
+            st.session_state.pending_corrections = [
+                c for c in st.session_state.pending_corrections
+                if not (
+                    c.sent_idx == sent_idx
+                    and c.token_idx == tok_idx
+                )
+            ]
+            st.session_state.pending_corrections.append(corr)
+        st.rerun()
 
 
 def _review_mode(store: CorrectionStore) -> None:
