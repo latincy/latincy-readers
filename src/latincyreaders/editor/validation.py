@@ -57,27 +57,38 @@ _UPOS_SET = frozenset(UPOS_TAGS)
 # ---------------------------------------------------------------------------
 
 XPOS_TAGS: list[str] = [
-    # Perseus-style (from la_core_web_lg)
-    "a", "c", "d", "e", "g", "l", "m", "n", "p", "r", "t", "u", "v", "x",
+    # LatinCy full-word tags (from la_core_web_lg / la_core_web_trf)
+    "adjective",
+    "adverb",
+    "conjunction",
+    "determiner",
+    "noun",
+    "number",
+    "particle",
+    "preposition",
+    "pronoun",
+    "proper_noun",
+    "punc",
+    "verb",
+    "X",
     # Allow empty / underscore
     "_",
 ]
 
 XPOS_DESCRIPTIONS: dict[str, str] = {
-    "a": "Adjective",
-    "c": "Conjunction",
-    "d": "Adverb",
-    "e": "Exclamation",
-    "g": "Particle (adverbial)",
-    "l": "Article (rare in Latin)",
-    "m": "Numeral",
-    "n": "Noun",
-    "p": "Pronoun",
-    "r": "Preposition",
-    "t": "Verb (finite)",
-    "u": "Supine",
-    "v": "Verb (participle/infinitive)",
-    "x": "Other / Unknown",
+    "adjective": "Adjective",
+    "adverb": "Adverb",
+    "conjunction": "Conjunction",
+    "determiner": "Determiner",
+    "noun": "Noun",
+    "number": "Numeral",
+    "particle": "Particle",
+    "preposition": "Preposition",
+    "pronoun": "Pronoun",
+    "proper_noun": "Proper noun",
+    "punc": "Punctuation",
+    "verb": "Verb",
+    "X": "Other / Unknown",
     "_": "Unspecified",
 }
 

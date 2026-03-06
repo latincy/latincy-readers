@@ -204,7 +204,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
         Each Doc has a "lines" span group containing citation-annotated spans.
         Metadata from JSON files is merged with file-level metadata.
 
-        Lookup order: LRU memory cache → canonical store → disk cache → NLP pipeline.
+        Lookup order: LRU memory cache → canonical store → sibling .conlluc → disk cache → NLP pipeline.
 
         When caching is enabled (default), documents are stored after first access
         and returned from cache on subsequent requests for the same fileid.
@@ -247,6 +247,25 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                             self._cache.popitem(last=False)
                         self._cache[fileid] = canonical_doc
                     yield canonical_doc
+                    continue
+
+            # Check sibling .conlluc file
+            conlluc_path = path.with_suffix(".conlluc")
+            if conlluc_path.exists():
+                from latincyreaders.cache.conlluc import read_conlluc
+
+                conlluc_doc, _meta = read_conlluc(conlluc_path, nlp.vocab)
+                if conlluc_doc is not None:
+                    conlluc_doc._.fileid = fileid
+                    conlluc_doc._.metadata = {
+                        "source": "conlluc",
+                        "conlluc_path": str(conlluc_path),
+                    }
+                    if self._cache_enabled:
+                        while len(self._cache) >= self._cache_maxsize:
+                            self._cache.popitem(last=False)
+                        self._cache[fileid] = conlluc_doc
+                    yield conlluc_doc
                     continue
 
             # Check disk cache
