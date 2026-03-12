@@ -552,15 +552,16 @@ class BaseCorpusReader(ABC):
         text: str,
         top_k: int = 10,
         config: "SentenceVectorConfig | None" = None,
+        auto_build: bool = False,
     ) -> list[dict]:
         """Find sentences similar to query text using stored vectors.
-
-        Requires a pre-built vector store.
 
         Args:
             text: Query text.
             top_k: Number of results.
             config: Vector store configuration. If None, uses defaults.
+            auto_build: If True, build the vector store automatically when
+                no existing store is found. Defaults to False.
 
         Returns:
             List of result dicts with fileid, citation, text, score.
@@ -569,11 +570,16 @@ class BaseCorpusReader(ABC):
 
         if config is None:
             config = SentenceVectorConfig()
-        store = SentenceVectorStore(config)
 
         nlp = self.nlp
         if nlp is None:
             raise ValueError("find_similar requires NLP pipeline for vectorisation.")
+
+        store = SentenceVectorStore(config)
+
+        # Auto-build if store is empty and caller opted in
+        if auto_build and store.stats()["sentences"] == 0:
+            store.build(self)
 
         return store.similar_to_sent(text, nlp, top_k=top_k)
 
