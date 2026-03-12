@@ -138,6 +138,21 @@ class BaseCorpusReader(ABC):
         return self._nlp
 
     @property
+    def vocab(self):
+        """Lightweight vocab for deserializing cached docs without loading the full model.
+
+        Returns the model's vocab if already loaded, otherwise creates a
+        minimal blank vocab.  This avoids a ~7s model load when all
+        documents are served from .conlluc or other caches.
+        """
+        if self._nlp is not None:
+            return self._nlp.vocab
+        if not hasattr(self, "_vocab"):
+            import spacy
+            self._vocab = spacy.blank(self._lang).vocab
+        return self._vocab
+
+    @property
     def annotation_level(self) -> AnnotationLevel:
         """Current annotation level."""
         return self._annotation_level
