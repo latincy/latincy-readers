@@ -63,6 +63,7 @@ from latincyreaders.readers.ud import (
 )
 from latincyreaders.nlp.backends import NLPBackend, SpaCyBackend
 from latincyreaders.utils.metadata import MetadataManager
+from latincyreaders.cache import CacheConfig, DiskCache, CanonicalAnnotationStore, CanonicalConfig
 
 __version__ = "1.3.0"
 __all__ = [
@@ -94,4 +95,17 @@ __all__ = [
     # NLP backends
     "NLPBackend",
     "SpaCyBackend",
+    # Cache & persistence
+    "CacheConfig",
+    "DiskCache",
+    "CanonicalAnnotationStore",
+    "CanonicalConfig",
 ]
+
+# Optional vector store (requires numpy)
+try:
+    from latincyreaders.cache import SentenceVectorConfig, SentenceVectorStore
+
+    __all__ += ["SentenceVectorConfig", "SentenceVectorStore"]
+except ImportError:
+    pass
