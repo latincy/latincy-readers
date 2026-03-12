@@ -215,12 +215,15 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
         Yields:
             spaCy Doc objects with doc.spans["lines"] populated.
         """
-        nlp = self.nlp
-        if nlp is None:
+        if self._annotation_level == AnnotationLevel.NONE:
             raise ValueError(
                 "Cannot create Docs with annotation_level=NONE. "
                 "Use texts() for raw strings."
             )
+
+        # Use lightweight vocab for cache lookups; defer full model load
+        # until we actually need the pipeline.
+        vocab = self.vocab
 
         for path in self._iter_paths(fileids):
             fileid = str(path.relative_to(self._root))
@@ -239,7 +242,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                 and self._canonical_config.prefer_canonical
                 and self._canonical_store.has(fileid)
             ):
-                canonical_doc = self._canonical_store.load(fileid, nlp.vocab)
+                canonical_doc = self._canonical_store.load(fileid, vocab)
                 if canonical_doc is not None:
                     self._cache_hits += 1
                     if self._cache_enabled:
@@ -254,7 +257,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
             if conlluc_path.exists():
                 from latincyreaders.cache.conlluc import read_conlluc
 
-                conlluc_doc, _meta = read_conlluc(conlluc_path, nlp.vocab)
+                conlluc_doc, _meta = read_conlluc(conlluc_path, vocab)
                 if conlluc_doc is not None:
                     conlluc_doc._.fileid = fileid
                     conlluc_doc._.metadata = {
@@ -270,7 +273,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
 
             # Check disk cache
             if self._disk_cache is not None:
-                disk_doc = self._disk_cache.get(fileid, nlp.vocab)
+                disk_doc = self._disk_cache.get(fileid, vocab)
                 if disk_doc is not None:
                     self._cache_hits += 1
                     if self._cache_enabled:
@@ -280,7 +283,13 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                     yield disk_doc
                     continue
 
-            # Cache miss - process the file
+            # Cache miss — need the full NLP pipeline now
+            nlp = self.nlp
+            if nlp is None:
+                raise RuntimeError(
+                    f"No cached annotations for {fileid} and NLP pipeline "
+                    "could not be loaded."
+                )
             if self._cache_enabled:
                 self._cache_misses += 1
 
