@@ -97,66 +97,110 @@ class SentenceVectorStore:
     # Building the store
     # ------------------------------------------------------------------
 
-    def build(self, reader: Any, fileids: list[str] | None = None) -> int:
+    def build(
+        self,
+        reader: Any,
+        fileids: list[str] | None = None,
+        batch_size: int | None = None,
+    ) -> int:
         """Compute and store sentence vectors from a reader.
 
         Iterates over all docs, computes mean-of-token vectors for each
         sentence, and writes them to disk.
 
+        Args:
+            reader: Corpus reader to index.
+            fileids: Files to include, or None for all.
+            batch_size: If set, flush vectors to disk every N files.
+                Provides crash resilience and lower peak memory for
+                large corpora. If None, writes once at the end.
+
         Returns the number of sentences indexed.
         """
-        vectors_list: list[Any] = []
-        index_list: list[dict[str, Any]] = []
+        self._dir.mkdir(parents=True, exist_ok=True)
+
+        # Clear any existing store for a fresh build
+        self.clear()
 
         fids = fileids if fileids is not None else reader.fileids()
+        total_count = 0
+        batch_vecs: list[Any] = []
+        batch_index: list[dict[str, Any]] = []
+        files_in_batch = 0
+
         for doc in reader.docs(fids):
             fileid = doc._.fileid or "unknown"
             for sent_idx, sent in enumerate(doc.sents):
                 vec = sent.vector
                 if vec is not None and self._np.any(vec):
-                    vectors_list.append(vec)
-
-                    # Try to get citation
-                    citation = ""
-                    if hasattr(sent._, "citation") and sent._.citation:
-                        citation = sent._.citation
-                    else:
-                        # Check overlapping spans
-                        for span_key in doc.spans:
-                            for span in doc.spans[span_key]:
-                                if span.start <= sent.start < span.end:
-                                    c = getattr(span._, "citation", None)
-                                    if c:
-                                        citation = c
-                                        break
-                            if citation:
-                                break
-
-                    index_list.append({
+                    batch_vecs.append(vec)
+                    batch_index.append({
                         "fileid": fileid,
                         "sent_idx": sent_idx,
-                        "citation": citation,
+                        "citation": self._get_citation(doc, sent),
                         "text": sent.text[:200],
                     })
 
+            files_in_batch += 1
+
+            if batch_size is not None and files_in_batch >= batch_size:
+                total_count += self._flush_batch(batch_vecs, batch_index)
+                batch_vecs = []
+                batch_index = []
+                files_in_batch = 0
+
+        # Flush remaining
+        if batch_vecs:
+            total_count += self._flush_batch(batch_vecs, batch_index)
+
+        return total_count
+
+    def _flush_batch(
+        self,
+        vectors_list: list[Any],
+        index_list: list[dict[str, Any]],
+    ) -> int:
+        """Append a batch of vectors and index entries to disk."""
         if not vectors_list:
             return 0
 
-        self._dir.mkdir(parents=True, exist_ok=True)
+        new_vecs = self._np.stack(vectors_list).astype(self._np.float32)
 
-        vectors_array = self._np.stack(vectors_list).astype(self._np.float32)
-        self._np.save(str(self._vectors_path), vectors_array)
+        # Append to existing on disk
+        existing_vecs = self._load_vectors()
+        existing_index = self._load_index()
 
+        if existing_vecs is not None and len(existing_vecs) > 0:
+            combined = self._np.concatenate([existing_vecs, new_vecs], axis=0)
+        else:
+            combined = new_vecs
+
+        self._np.save(str(self._vectors_path), combined)
+
+        full_index = existing_index + index_list
         self._index_path.write_text(
-            json.dumps(index_list, ensure_ascii=False),
+            json.dumps(full_index, ensure_ascii=False),
             encoding="utf-8",
         )
 
-        # Reset lazy cache
+        # Reset lazy cache so next _load picks up new data
         self._vectors = None
         self._index = None
 
         return len(index_list)
+
+    @staticmethod
+    def _get_citation(doc: "Doc", sent: Any) -> str:
+        """Extract citation string for a sentence span."""
+        if hasattr(sent._, "citation") and sent._.citation:
+            return sent._.citation
+        for span_key in doc.spans:
+            for span in doc.spans[span_key]:
+                if span.start <= sent.start < span.end:
+                    c = getattr(span._, "citation", None)
+                    if c:
+                        return c
+        return ""
 
     def add_doc(self, doc: "Doc") -> int:
         """Add vectors for a single doc's sentences to the store.

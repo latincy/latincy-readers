@@ -83,6 +83,58 @@ class TestBuildVectors:
         assert store2.stats()["sentences"] == store.stats()["sentences"]
 
 
+class TestBatchedBuild:
+    """Test batched vector index building."""
+
+    def test_batched_build_same_result(self, tesserae_dir, tmp_path):
+        """Batched build produces same index as unbatched."""
+        reader = _make_vector_reader(tesserae_dir, tmp_path)
+
+        # Unbatched
+        cfg1 = SentenceVectorConfig(store_root=tmp_path, collection="unbatched")
+        store1 = SentenceVectorStore(cfg1)
+        count1 = store1.build(reader)
+
+        # Batched with batch_size=1 (flush after every file)
+        cfg2 = SentenceVectorConfig(store_root=tmp_path, collection="batched")
+        store2 = SentenceVectorStore(cfg2)
+        count2 = store2.build(reader, batch_size=1)
+
+        assert count1 == count2
+        assert store1.stats()["sentences"] == store2.stats()["sentences"]
+
+    def test_batched_build_flushes_incrementally(self, tesserae_dir, tmp_path):
+        """Batched build creates files before processing all docs."""
+        reader = _make_vector_reader(tesserae_dir, tmp_path)
+        cfg = SentenceVectorConfig(store_root=tmp_path, collection="incremental")
+        store = SentenceVectorStore(cfg)
+
+        # batch_size=1 should write after first file
+        count = store.build(reader, batch_size=1)
+        assert count > 0
+        assert (tmp_path / "incremental" / "vectors.npy").exists()
+
+    def test_batched_build_default_batch_size(self, tesserae_dir, tmp_path):
+        """Build without batch_size still works (backwards compatible)."""
+        reader = _make_vector_reader(tesserae_dir, tmp_path)
+        cfg = SentenceVectorConfig(store_root=tmp_path, collection="default")
+        store = SentenceVectorStore(cfg)
+        count = store.build(reader)
+        assert count > 0
+
+    def test_batched_build_searchable(self, tesserae_dir, tmp_path):
+        """Index built with batching is fully searchable."""
+        reader = _make_vector_reader(tesserae_dir, tmp_path)
+        cfg = SentenceVectorConfig(store_root=tmp_path, collection="searchable")
+        store = SentenceVectorStore(cfg)
+        store.build(reader, batch_size=1)
+
+        query = np.ones(300, dtype=np.float32)  # 300-dim for la_core_web_lg
+        results = store.similar(query, top_k=3)
+        assert len(results) > 0
+        assert all("score" in r for r in results)
+
+
 class TestFindSimilar:
     """Test BaseCorpusReader.find_similar()."""
 
