@@ -70,6 +70,12 @@ Examples:
         default=None,
         help="Root directory of Tesserae corpus (default: auto-download)",
     )
+    build_p.add_argument(
+        "--batch-size",
+        type=int,
+        default=50,
+        help="Flush to disk every N files (default: 50)",
+    )
 
     # query
     query_p = sub.add_parser("query", help="Search for similar sentences")
@@ -114,10 +120,10 @@ def cmd_build(args: argparse.Namespace) -> None:
         fileids = reader.fileids()
         print(f"  Found {len(fileids)} files")
 
-    print(f"Building vector index (collection={cfg.collection!r})...")
+    print(f"Building vector index (collection={cfg.collection!r}, batch_size={args.batch_size})...")
     t0 = time.perf_counter()
     store = SentenceVectorStore(cfg)
-    count = store.build(reader, fileids)
+    count = store.build(reader, fileids, batch_size=args.batch_size)
     elapsed = time.perf_counter() - t0
 
     stats = store.stats()
