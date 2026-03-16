@@ -140,10 +140,10 @@ class TestFindSimilar:
         # Verify store was built
         assert (tmp_path / "auto" / "vectors.npy").exists()
 
-    def test_find_similar_empty_store_no_auto_build(self, tesserae_dir, tmp_path):
-        """find_similar without auto_build on empty store returns empty list."""
+    def test_find_similar_empty_store_no_auto_build_raises(self, tesserae_dir, tmp_path):
+        """find_similar without auto_build on empty store raises with guidance."""
         reader = _make_vector_reader(tesserae_dir, tmp_path)
         cfg = SentenceVectorConfig(store_root=tmp_path, collection="empty")
 
-        results = reader.find_similar("amicitia", config=cfg)
-        assert results == []
+        with pytest.raises(ValueError, match="No vector index found"):
+            reader.find_similar("amicitia", config=cfg)
