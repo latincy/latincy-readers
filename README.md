@@ -6,7 +6,7 @@
 
 Corpus readers for Latin texts with [LatinCy](https://github.com/diyclassics/latincy) integration. Now also supporting Ancient Greek texts with [OdyCy](https://centre-for-humanities-computing.github.io/odyCy/).
 
-Version 1.2.0; Python 3.10+; LatinCy 3.8.0+
+Version 1.4.0; Python 3.10+; LatinCy 3.8.0+
 
 ## Installation
 
@@ -230,6 +230,42 @@ for sg in reader.skipgrams(n=2, k=1):
     print(sg)
 ```
 
+### Sentence Vector Search
+
+Find semantically similar sentences across the corpus using sentence-level embeddings. Requires the `vectors` extra (`pip install latincyreaders[vectors]`).
+
+```python
+from latincyreaders import TesseraeReader
+from latincyreaders.cache.vectors import SentenceVectorConfig, SentenceVectorStore
+
+reader = TesseraeReader()
+
+# Build a vector index (saved to ~/latincy_data/vectors/<collection>/)
+cfg = SentenceVectorConfig(collection="tesserae")
+store = SentenceVectorStore(cfg)
+store.build(reader)
+
+# Semantic search
+results = store.similar_to_sent("arma virumque cano", reader.nlp, top_k=5)
+for r in results:
+    print(f"[{r['score']:.3f}] {r['citation']}: {r['text'][:80]}")
+
+# Or use the reader shortcut
+results = reader.find_similar("amor", top_k=5, config=cfg)
+
+# Auto-build on first query (builds index if none exists)
+results = reader.find_similar("amor", auto_build=True)
+
+# Find sentences similar to one already in the index
+results = store.similar_to_doc_sent("vergil.aeneid.part.1.tess", 0, top_k=5)
+
+# Index statistics
+print(store.stats())
+# {'collection': 'tesserae', 'sentences': 15800, 'vector_dim': 300, ...}
+```
+
+Vectors are stored as memory-mapped NumPy arrays for efficient search without external dependencies. See `notebooks/vector-search-demo.ipynb` for a full walkthrough.
+
 ### Document Caching
 
 Documents are cached by default for better performance when accessing the same file multiple times:
@@ -315,18 +351,19 @@ if not result.is_valid:
 
 ## CLI Tools
 
-Search tool in `cli/`:
+Tools in `cli/`:
 
 ```bash
-# Lemma search (slower, finds all inflected forms)
+# Sentence search
 python cli/reader_search.py --lemmas Caesar --limit 100
-python cli/reader_search.py --lemmas bellum pax --fileids "cicero.*"
-
-# Form search (fast, exact match)
 python cli/reader_search.py --forms Caesar Caesarem --limit 100
-
-# Pattern search (fast, regex)
 python cli/reader_search.py --pattern "\\bTheb\\w+" --output thebes.tsv
+
+# Vector search — build and query sentence vector indices
+python cli/vector_search.py build
+python cli/vector_search.py build --collection vergil --fileids "vergil.*"
+python cli/vector_search.py query "arma virumque cano" --top-k 10
+python cli/vector_search.py stats
 ```
 
 ---
