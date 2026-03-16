@@ -587,9 +587,15 @@ class BaseCorpusReader(ABC):
 
         store = SentenceVectorStore(config)
 
-        # Auto-build if store is empty and caller opted in
-        if auto_build and store.stats()["sentences"] == 0:
-            store.build(self)
+        if store.stats()["sentences"] == 0:
+            if auto_build:
+                store.build(self)
+            else:
+                raise ValueError(
+                    f"No vector index found for collection "
+                    f"{config.collection!r}. Build one first with "
+                    f"reader.build_vectors() or pass auto_build=True."
+                )
 
         return store.similar_to_sent(text, nlp, top_k=top_k)
 
