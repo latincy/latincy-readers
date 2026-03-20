@@ -4,7 +4,7 @@
 
 # LatinCy Readers
 
-Corpus readers for Latin texts with [LatinCy](https://github.com/diyclassics/latincy) integration. Now also supporting Ancient Greek texts with [OdyCy](https://centre-for-humanities-computing.github.io/odyCy/).
+Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) integration.
 
 Version 1.4.0; Python 3.10+; LatinCy 3.8.0+
 
@@ -17,8 +17,8 @@ pip install latincy-readers
 # Install the LatinCy model (for Latin texts)
 pip install https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.8.0-py3-none-any.whl
 
-# Install the OdyCy model (for Ancient Greek texts)
-pip install https://huggingface.co/chcaa/grc_odycy_joint_sm/resolve/main/grc_odycy_joint_sm-any-py3-none-any.whl
+# Install the LatinCy Greek model (for Ancient Greek texts)
+pip install https://huggingface.co/latincy/grc_dep_web_lg/resolve/main/grc_dep_web_lg-any-py3-none-any.whl
 
 # For development (editable install)
 git clone https://github.com/diyclassics/latincy-readers.git
@@ -55,7 +55,7 @@ for text in reader.texts():
 | Reader | Format | Auto-Download | Description |
 |--------|--------|---------------|-------------|
 | `TesseraeReader` | `.tess` | Yes | CLTK Latin Tesserae corpus |
-| `GreekTesseraeReader` | `.tess` | Yes | CLTK Greek Tesserae corpus (OdyCy) |
+| `GreekTesseraeReader` | `.tess` | Yes | CLTK Greek Tesserae corpus |
 | `PlaintextReader` | `.txt` | No | Plain text files |
 | `LatinLibraryReader` | `.txt` | Yes | Latin Library corpus |
 | `TEIReader` | `.xml` | No | TEI-XML documents |
@@ -86,7 +86,7 @@ TesseraeReader.download("/path/to/destination")
 
 ### Ancient Greek (GreekTesseraeReader)
 
-Read Ancient Greek texts from the CLTK Greek Tesserae corpus using OdyCy NLP models:
+Read Ancient Greek texts from the CLTK Greek Tesserae corpus using LatinCy Greek models:
 
 ```python
 from latincyreaders import GreekTesseraeReader, AnnotationLevel
@@ -94,7 +94,7 @@ from latincyreaders import GreekTesseraeReader, AnnotationLevel
 # Auto-download Greek Tesserae corpus on first use
 reader = GreekTesseraeReader()
 
-# Use TOKENIZE level (no OdyCy model needed)
+# Use TOKENIZE level (no Greek model needed)
 reader = GreekTesseraeReader(annotation_level=AnnotationLevel.TOKENIZE)
 
 # Iterate over citation lines
@@ -404,4 +404,4 @@ python cli/vector_search.py stats
 
 ---
 
-*Developed by [Patrick J. Burns](http://github.com/diyclassics) with Claude Opus 4.5. in January 2026.*  
+*Developed by [Patrick J. Burns](http://github.com/diyclassics) with Claude Opus in January 2026-March 2026.*  
