@@ -4,8 +4,8 @@ Reads Ancient Greek texts in the Tesserae format from the CLTK Greek
 Tesserae corpus (grc_text_tesserae). Uses the same `.tess` citation
 format as the Latin Tesserae corpus.
 
-Requires OdyCy for BASIC/FULL annotation levels:
-    pip install https://huggingface.co/chcaa/grc_odycy_joint_sm/resolve/main/grc_odycy_joint_sm-any-py3-none-any.whl
+Requires a LatinCy Greek model for BASIC/FULL annotation levels:
+    pip install https://huggingface.co/latincy/grc_dep_web_lg/resolve/main/grc_dep_web_lg-any-py3-none-any.whl
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ class GreekTesseraeReader(TesseraeReader):
     search, concordance, KWIC, ngrams, etc.) with Greek-specific defaults:
 
     - Corpus: CLTK Greek Tesserae (grc_text_tesserae)
-    - NLP model: OdyCy (grc_odycy_joint_sm)
+    - NLP model: LatinCy Greek (grc_dep_web_lg)
     - Language: Ancient Greek (grc)
 
     If no root path is provided, looks for the corpus in:
@@ -170,7 +170,7 @@ class GreekTesseraeReader(TesseraeReader):
         auto_download: bool = True,
         cache: bool = True,
         cache_maxsize: int = 128,
-        model_name: str = "grc_odycy_joint_sm",
+        model_name: str = "grc_dep_web_lg",
         **kwargs,
     ):
         """Initialize the Greek Tesserae reader.
@@ -183,7 +183,7 @@ class GreekTesseraeReader(TesseraeReader):
             auto_download: If True and corpus not found, offer to download.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
-            model_name: Name of the spaCy model to load. Defaults to OdyCy.
+            model_name: Name of the spaCy model to load. Defaults to grc_dep_web_lg.
             **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
         """
         super().__init__(
