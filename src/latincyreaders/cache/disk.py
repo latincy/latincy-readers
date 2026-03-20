@@ -21,6 +21,20 @@ from spacy.vocab import Vocab
 _DEFAULT_CACHE_DIR = Path.home() / ".latincy_cache"
 
 
+def _sanitize_user_data(doc: Doc) -> None:
+    """Convert non-serializable user_data values to strings.
+
+    LatinCy models store MorphAnalysis objects in custom extensions
+    (e.g. ``remorph``). These aren't msgpack-serializable, so we
+    convert them to their string representation before DocBin export.
+    """
+    from spacy.tokens.morphanalysis import MorphAnalysis
+
+    for key, val in doc.user_data.items():
+        if isinstance(val, MorphAnalysis):
+            doc.user_data[key] = str(val)
+
+
 @dataclass
 class CacheConfig:
     """Configuration for persistent disk caching.
@@ -142,6 +156,7 @@ class DiskCache:
         path = self._dir / filename
 
         doc_bin = DocBin(store_user_data=True)
+        _sanitize_user_data(doc)
         doc_bin.add(doc)
         doc_bin.to_disk(path)
 
