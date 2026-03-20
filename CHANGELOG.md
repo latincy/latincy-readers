@@ -24,10 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - CoNLL-U Cache format (`.conlluc`) — CoNLL-U with mandatory silver-standard metadata
 - **Lazy model loading** — lightweight vocab for cache deserialization avoids ~7s model load
   when all documents are served from cache (8x speedup)
-- **Streamlit annotation editor** with tabbed layer view (Lemma | UPOS | XPOS | Morph | NER)
 - **NLP backend abstraction** (`NLPBackend`, `SpaCyBackend`) for future multi-backend support
 - **WikiSourceReader** for la.wikisource.org
-- **AGLDT-to-UD tree converter** for Prague-style dependency annotations
 
 ## [1.3.0] - 2026-02-15
 
