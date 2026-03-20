@@ -83,6 +83,11 @@ class WikiSourceReader(BaseCorpusReader):
         ...         print(f"{span._.citation}: {span.text[:60]}...")
     """
 
+    # Pattern for ProofreadPage transclusions (unexpanded in raw wikitext)
+    _PAGES_TRANSCLUSION_PATTERN = re.compile(
+        r'<pages\s+index="[^"]*"[^/]*/>', re.IGNORECASE
+    )
+
     # Regex patterns for wikitext parsing
     _TITULUS_PATTERN = re.compile(
         r"\{\{titulus2\|([^}]+)\}\}", re.IGNORECASE
@@ -651,32 +656,28 @@ class WikiSourceReader(BaseCorpusReader):
         return saved
 
     @classmethod
-    def _download_page(
+    def _fetch_api(
         cls,
         page: str,
-        dest: Path,
-        follow_subpages: bool,
-        saved: list[Path],
-        visited: set[str],
-    ) -> None:
-        """Recursively download a page and its sub-pages.
+        prop: str = "wikitext",
+    ) -> dict:
+        """Fetch a page from the MediaWiki API.
 
         Args:
-            page: Page title to download.
-            dest: Destination directory.
-            follow_subpages: Whether to follow sub-page links.
-            saved: Accumulator for saved paths.
-            visited: Set of already-visited pages to prevent cycles.
-        """
-        if page in visited:
-            return
-        visited.add(page)
+            page: Page title.
+            prop: API prop parameter (``"wikitext"`` or ``"text"``).
 
-        # Fetch wikitext via MediaWiki API
+        Returns:
+            Parsed JSON response dict.
+
+        Raises:
+            ConnectionError: On network failure.
+            ValueError: On MediaWiki API error.
+        """
         api_url = (
             "https://la.wikisource.org/w/api.php"
             f"?action=parse&page={urllib.parse.quote(page)}"
-            "&prop=wikitext&format=json"
+            f"&prop={prop}&format=json"
         )
 
         try:
@@ -696,13 +697,129 @@ class WikiSourceReader(BaseCorpusReader):
                 f"MediaWiki API error for '{page}': {data['error'].get('info', 'unknown')}"
             )
 
+        return data
+
+    @classmethod
+    def _html_to_wikitext(cls, html: str) -> str:
+        """Convert rendered MediaWiki HTML to clean wikitext-like format.
+
+        Used for pages that use ProofreadPage transclusions (``<pages index=.../>``),
+        where the raw wikitext does not contain the actual text content.
+
+        Extracts text from the ``prp-pages-output`` div, converts HTML structure
+        to wikitext conventions, and preserves macrons and other diacritics.
+
+        Args:
+            html: Rendered HTML from the MediaWiki parse API (``prop=text``).
+
+        Returns:
+            Cleaned text in wikitext-like format suitable for the reader's parser.
+        """
+        # Extract content from prp-pages-output div if present
+        prp_match = re.search(
+            r'<div\s+class="prp-pages-output"[^>]*>(.*?)</div>\s*'
+            r'(?:<div\s+class="ws-noexport|$)',
+            html, re.DOTALL,
+        )
+        text = prp_match.group(1) if prp_match else html
+
+        # Remove navigation tables (ws-noexport)
+        text = re.sub(r'<table\s+class="ws-noexport"[^>]*>.*?</table>', '', text, flags=re.DOTALL)
+
+        # Remove page number spans
+        text = re.sub(r'<span\s+class="pagenum"[^>]*>.*?</span>', '', text, flags=re.DOTALL)
+        text = re.sub(r'<span\s+id="pagename\d+"[^>]*></span>', '', text, flags=re.DOTALL)
+
+        # Remove footnote references (superscript citation markers)
+        text = re.sub(r'<sup\s+id="cite[^"]*"[^>]*>.*?</sup>', '', text, flags=re.DOTALL)
+
+        # Remove reference/notes sections
+        text = re.sub(r'<ol\s+class="references">.*?</ol>', '', text, flags=re.DOTALL)
+
+        # Convert chapter/section headings to wikitext format
+        # Centered large text -> == Section ==
+        text = re.sub(
+            r'<div\s+class="centertext"[^>]*>\s*<span[^>]*><span[^>]*>(.*?)</span></span>\s*</div>',
+            r'\n== \1 ==\n',
+            text, flags=re.DOTALL,
+        )
+
+        # Convert <p> tags to double newlines
+        text = re.sub(r'<p>', '\n', text)
+        text = re.sub(r'</p>', '\n', text)
+
+        # Convert <br\s*/> to newlines
+        text = re.sub(r'<br\s*/?>', '\n', text)
+
+        # Remove remaining HTML tags
+        text = re.sub(r'<[^>]+>', '', text)
+
+        # Decode HTML entities
+        text = text.replace("&#160;", " ")
+        text = text.replace("&nbsp;", " ")
+        text = text.replace("&#91;", "[")
+        text = text.replace("&#93;", "]")
+        text = text.replace("&amp;", "&")
+        text = text.replace("&lt;", "<")
+        text = text.replace("&gt;", ">")
+        text = text.replace("&quot;", '"')
+
+        # Remove horizontal rules / decorative bars
+        text = re.sub(r'\n\s*[─━—]{3,}\s*\n', '\n', text)
+
+        # Remove "References" header left over from footnotes
+        text = re.sub(r'\n\s*References\s*\n', '\n', text)
+
+        # Collapse multiple blank lines
+        text = re.sub(r'\n{3,}', '\n\n', text)
+
+        return text.strip()
+
+    @classmethod
+    def _download_page(
+        cls,
+        page: str,
+        dest: Path,
+        follow_subpages: bool,
+        saved: list[Path],
+        visited: set[str],
+    ) -> None:
+        """Recursively download a page and its sub-pages.
+
+        For pages using ProofreadPage transclusions (``<pages index=.../>``),
+        automatically fetches the rendered HTML and converts it to clean text
+        so that macrons and other diacritics are preserved.
+
+        Args:
+            page: Page title to download.
+            dest: Destination directory.
+            follow_subpages: Whether to follow sub-page links.
+            saved: Accumulator for saved paths.
+            visited: Set of already-visited pages to prevent cycles.
+        """
+        if page in visited:
+            return
+        visited.add(page)
+
+        # Fetch raw wikitext first
+        data = cls._fetch_api(page, prop="wikitext")
         wikitext = data["parse"]["wikitext"]["*"]
+
+        # Check for ProofreadPage transclusions — if present, the raw
+        # wikitext contains only <pages index="..."/> tags instead of
+        # actual text content.  Fetch rendered HTML and convert instead.
+        if cls._PAGES_TRANSCLUSION_PATTERN.search(wikitext):
+            rendered_data = cls._fetch_api(page, prop="text")
+            rendered_html = rendered_data["parse"]["text"]["*"]
+            content = cls._html_to_wikitext(rendered_html)
+        else:
+            content = wikitext
 
         # Determine filename: normalize page title to filesystem-safe name
         safe_name = page.lower().replace(" ", "_").replace("/", "_")
         file_path = dest / f"{safe_name}.wiki"
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_path.write_text(wikitext, encoding="utf-8")
+        file_path.write_text(content, encoding="utf-8")
         saved.append(file_path)
 
         # Follow sub-page links if requested
