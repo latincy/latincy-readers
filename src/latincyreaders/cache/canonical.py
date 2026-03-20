@@ -8,8 +8,8 @@ machine-generated and not suitable for model training.
 Canonical annotations live in a directory structure::
 
     {store_root}/{collection}/
-        manifest.json        — fileid map, version, contributor info
-        {hash}.conlluc       — CoNLL-U Cache files (silver annotations)
+        manifest.json                          — fileid map, metadata
+        silius_italicus.punica.part.1.conlluc   — human-readable filenames
 
 They can be exported and imported for sharing via git repositories.
 """
@@ -35,6 +35,26 @@ from latincyreaders.cache.conlluc import (
     write_conlluc,
 )
 from latincyreaders.cache.disk import _fileid_hash
+
+
+def _fileid_to_filename(fileid: str) -> str:
+    """Derive a human-readable .conlluc filename from a fileid.
+
+    Replaces path separators with ``--`` and swaps the file extension
+    for ``.conlluc``, so editors can identify the source file at a glance.
+
+    Examples:
+        ``vergil.aeneid.part.1.tess`` → ``vergil.aeneid.part.1.conlluc``
+        ``la/texts/vergil.aen.tess``  → ``la--texts--vergil.aen.conlluc``
+    """
+    # Flatten path separators
+    name = fileid.replace("/", "--").replace("\\", "--")
+    # Replace source extension with .conlluc
+    for ext in (".tess", ".txt", ".xml", ".conllu"):
+        if name.endswith(ext):
+            name = name[: -len(ext)]
+            break
+    return name + CONLLUC_EXTENSION
 
 
 # Default canonical data root
@@ -100,19 +120,39 @@ class CanonicalAnnotationStore:
     # CRUD
     # ------------------------------------------------------------------
 
+    def _resolve_path(self, fileid: str) -> Path | None:
+        """Resolve the .conlluc path for a fileid.
+
+        Checks the manifest first, then falls back to the derived
+        readable filename, then to the legacy hash-based filename.
+        """
+        manifest = self._load_manifest()
+        files = manifest.get("files", {})
+        entry = files.get(fileid)
+        if entry is not None:
+            path = self._dir / entry["filename"]
+            if path.exists():
+                return path
+
+        # Fallback: derive readable filename directly
+        path = self._dir / _fileid_to_filename(fileid)
+        if path.exists():
+            return path
+
+        # Legacy fallback: hash-based filename
+        path = self._dir / f"{_fileid_hash(fileid)}{CONLLUC_EXTENSION}"
+        if path.exists():
+            return path
+
+        return None
+
     def load(self, fileid: str, vocab: Vocab) -> Doc | None:
         """Load canonical annotations for a fileid.
 
         Returns None if no canonical annotation exists.
         """
-        manifest = self._load_manifest()
-        files = manifest.get("files", {})
-        entry = files.get(fileid)
-        if entry is None:
-            return None
-
-        path = self._dir / entry["filename"]
-        if not path.exists():
+        path = self._resolve_path(fileid)
+        if path is None:
             return None
 
         doc, _meta = read_conlluc(path, vocab)
@@ -120,12 +160,7 @@ class CanonicalAnnotationStore:
 
     def has(self, fileid: str) -> bool:
         """Check if canonical annotations exist for a fileid."""
-        manifest = self._load_manifest()
-        files = manifest.get("files", {})
-        entry = files.get(fileid)
-        if entry is None:
-            return False
-        return (self._dir / entry["filename"]).exists()
+        return self._resolve_path(fileid) is not None
 
     def save(self, fileid: str, doc: Doc, **extra_meta: Any) -> None:
         """Write canonical annotations for a fileid.
@@ -137,8 +172,7 @@ class CanonicalAnnotationStore:
         """
         self._dir.mkdir(parents=True, exist_ok=True)
 
-        h = _fileid_hash(fileid)
-        filename = f"{h}{CONLLUC_EXTENSION}"
+        filename = _fileid_to_filename(fileid)
         path = self._dir / filename
 
         content = doc_to_conlluc(
@@ -155,7 +189,6 @@ class CanonicalAnnotationStore:
         files = manifest.setdefault("files", {})
         files[fileid] = {
             "filename": filename,
-            "hash": h,
             "timestamp": time.time(),
             **extra_meta,
         }
@@ -187,14 +220,8 @@ class CanonicalAnnotationStore:
 
         Returns ``None`` if no canonical annotation exists for *fileid*.
         """
-        manifest = self._load_manifest()
-        files = manifest.get("files", {})
-        entry = files.get(fileid)
-        if entry is None:
-            return None
-
-        path = self._dir / entry["filename"]
-        if not path.exists():
+        path = self._resolve_path(fileid)
+        if path is None:
             return None
 
         return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
