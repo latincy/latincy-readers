@@ -68,6 +68,8 @@ class BaseCorpusReader(ABC):
         backend: "NLPBackend | None" = None,
         cache_config: "CacheConfig | None" = None,
         canonical_config: "CanonicalConfig | None" = None,
+        enable: list[str] | None = None,
+        disable: list[str] | None = None,
     ):
         """Initialize the corpus reader.
 
@@ -75,7 +77,8 @@ class BaseCorpusReader(ABC):
             root: Root directory containing corpus files.
             fileids: Glob pattern for selecting files. If None, uses class default.
             encoding: Text encoding for reading files.
-            annotation_level: How much NLP annotation to apply.
+            annotation_level: How much NLP annotation to apply. Ignored when
+                *enable* or *disable* is provided (except NONE/TOKENIZE).
             metadata_pattern: Glob pattern for metadata JSON files. Set to None to disable.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
@@ -91,6 +94,11 @@ class BaseCorpusReader(ABC):
                 pre-computed ``.conlluc`` annotations before running the NLP
                 pipeline.  Combined with *cache_config*, the read-through
                 path is: LRU → DocBin (disk) → .conlluc (canonical) → pipeline.
+            enable: Component names to enable (additive). Backbone components
+                (tok2vec/transformer, senter) are always included. Mutually
+                exclusive with *disable*.
+            disable: Component names to disable (subtractive). Backbone
+                components cannot be disabled. Mutually exclusive with *enable*.
         """
         self._root = Path(root).resolve()
         self._fileids_pattern = fileids or self._default_file_pattern()
@@ -99,6 +107,8 @@ class BaseCorpusReader(ABC):
         self._model_name = model_name
         self._lang = lang
         self._backend = backend
+        self._enable = enable
+        self._disable = disable
         self._nlp: Language | None = None  # Lazy loaded
         self._metadata_pattern = metadata_pattern
         self._metadata: dict[str, dict[str, Any]] | None = None  # Lazy loaded
@@ -144,6 +154,8 @@ class BaseCorpusReader(ABC):
                 self._annotation_level,
                 model_name=self._model_name,
                 lang=self._lang,
+                enable=self._enable,
+                disable=self._disable,
             )
         return self._nlp
 
