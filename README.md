@@ -287,6 +287,35 @@ print(reader.cache_stats())  # {'hits': 5, 'misses': 3, 'size': 3, 'maxsize': 12
 reader.clear_cache()
 ```
 
+### Persistent Disk Cache
+
+For large corpora, enable persistent caching to avoid re-running the NLP pipeline across sessions. Cached documents are stored as `.spacy` DocBin files in `~/.latincy_cache/<collection>/` by default:
+
+```python
+from latincyreaders import TesseraeReader
+from latincyreaders.cache.disk import CacheConfig
+
+# Enable disk caching for the Tesserae corpus
+config = CacheConfig(persist=True, collection="tesserae")
+reader = TesseraeReader(model_name="la_core_web_lg", cache_config=config)
+
+# First call runs NLP and caches to disk
+doc = next(reader.docs(fileids="vergil.aeneid.part.1.tess"))
+
+# Subsequent calls load from cache (~100x faster)
+doc = next(reader.docs(fileids="vergil.aeneid.part.1.tess"))
+
+# Custom cache location
+config = CacheConfig(
+    persist=True,
+    collection="tesserae",
+    cache_dir="/path/to/cache",
+)
+
+# Time-to-live (auto-expire after N days)
+config = CacheConfig(persist=True, collection="tesserae", ttl_days=30)
+```
+
 ### Annotation Levels
 
 All linguistic annotations are provided by [LatinCy](https://github.com/diyclassics/latincy) spaCy-based pipelines. The full pipeline provides POS tagging, lemmatization, morphological analysis, and named entity recognition—but this can be slow for large corpora. If you don't need all annotations, you can get significant performance gains by selecting a lighter annotation level:
