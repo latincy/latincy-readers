@@ -4,21 +4,24 @@
 
 # LatinCy Readers
 
-Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) integration.
+Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) NLP integration.
 
-Version 1.4.0; Python 3.10+; LatinCy 3.8.0+
+Version 1.4.1; Python 3.10+; LatinCy 3.9.0+
 
 ## Installation
 
 ```bash
-# Install from PyPI
+# Install with Latin model (recommended)
+pip install latincy-readers[la]
+
+# Install with Greek model
+pip install latincy-readers[grc]
+
+# Install with all models and vector support
+pip install latincy-readers[all]
+
+# Install without models (bring your own)
 pip install latincy-readers
-
-# Install the LatinCy model (for Latin texts)
-pip install https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.8.0-py3-none-any.whl
-
-# Install the LatinCy Greek model (for Ancient Greek texts)
-pip install https://huggingface.co/latincy/grc_dep_web_lg/resolve/main/grc_dep_web_lg-any-py3-none-any.whl
 
 # For development (editable install)
 git clone https://github.com/diyclassics/latincy-readers.git
@@ -86,7 +89,7 @@ TesseraeReader.download("/path/to/destination")
 
 ### Ancient Greek (GreekTesseraeReader)
 
-Read Ancient Greek texts from the CLTK Greek Tesserae corpus using LatinCy Greek models:
+Read Ancient Greek texts from the CLTK Greek Tesserae corpus using LatinCy Greek NLP models:
 
 ```python
 from latincyreaders import GreekTesseraeReader, AnnotationLevel
@@ -404,4 +407,4 @@ python cli/vector_search.py stats
 
 ---
 
-*Developed by [Patrick J. Burns](http://github.com/diyclassics) with Claude Opus in January 2026-March 2026.*  
+*Developed by [Patrick J. Burns](http://github.com/diyclassics) with Claude Code in 2026.*

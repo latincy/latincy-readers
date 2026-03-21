@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "latincy-readers"
-version = "1.4.0"
+version = "1.4.1"
 description = "Corpus readers for Latin texts with LatinCy/spaCy integration"
 readme = "README.md"
 license = "MIT"
@@ -33,6 +33,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+la = [
+    "la-core-web-lg @ https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.9.0-py3-none-any.whl",
+]
+grc = [
+    "grc-dep-web-lg @ https://huggingface.co/latincy/grc_dep_web_lg/resolve/main/grc_dep_web_lg-3.8.1-py3-none-any.whl",
+]
+all = [
+    "latincy-readers[la,grc,vectors]",
+]
 vectors = [
     "numpy>=1.24",
 ]
