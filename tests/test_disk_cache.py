@@ -150,6 +150,47 @@ class TestDiskCacheTTL:
         assert cache_with_ttl.get("stale.tess", vocab) is None
 
 
+class TestRemorphRoundtrip:
+    """Tests for remorph stash/restore through DocBin."""
+
+    @pytest.fixture
+    def cache(self, tmp_path):
+        cfg = CacheConfig(
+            cache_dir=tmp_path / "cache", persist=True, collection="test"
+        )
+        return DiskCache(cfg)
+
+    def test_remorph_survives_roundtrip(self, cache):
+        from spacy.tokens import Token
+
+        if not Token.has_extension("remorph"):
+            Token.set_extension("remorph", default=None)
+
+        vocab = Vocab()
+        doc = Doc(vocab, words=["est", "arma", "cepit"], spaces=[True, True, False])
+        doc[0]._.remorph = "present"
+        # doc[1] has no remorph (None) — should stay None
+        doc[2]._.remorph = "perfect"
+
+        cache.put("test.tess", doc)
+
+        loaded = cache.get("test.tess", vocab)
+        assert loaded is not None
+        assert loaded[0]._.remorph == "present"
+        assert loaded[1]._.remorph is None
+        assert loaded[2]._.remorph == "perfect"
+
+    def test_no_remorph_extension_no_error(self, cache):
+        """Docs without remorph data should round-trip cleanly."""
+        vocab = Vocab()
+        doc = Doc(vocab, words=["test"], spaces=[False])
+
+        cache.put("no_remorph.tess", doc)
+        loaded = cache.get("no_remorph.tess", vocab)
+        assert loaded is not None
+        assert loaded[0].text == "test"
+
+
 class TestFileidHash:
     def test_deterministic(self):
         h1 = _fileid_hash("vergil.aen.tess")

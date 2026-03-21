@@ -35,6 +35,46 @@ def _sanitize_user_data(doc: Doc) -> None:
             doc.user_data[key] = str(val)
 
 
+def _stash_remorph(doc: Doc) -> None:
+    """Save token._.remorph values into doc.user_data for DocBin serialization.
+
+    DocBin doesn't persist custom token extensions, so we stash the
+    remorph values as a list in ``doc.user_data["_remorph"]`` keyed by
+    token index.  Only non-None values are stored (as a sparse dict)
+    to keep the payload small.
+    """
+    from spacy.tokens import Token
+
+    if not Token.has_extension("remorph"):
+        return
+
+    sparse: dict[str, str] = {}
+    for token in doc:
+        val = token._.remorph
+        if val is not None:
+            sparse[str(token.i)] = val
+
+    if sparse:
+        doc.user_data["_remorph"] = sparse
+
+
+def _restore_remorph(doc: Doc) -> None:
+    """Restore token._.remorph values from doc.user_data after DocBin load."""
+    from spacy.tokens import Token
+
+    if not Token.has_extension("remorph"):
+        Token.set_extension("remorph", default=None)
+
+    sparse = doc.user_data.pop("_remorph", None)
+    if sparse is None:
+        return
+
+    for idx_str, val in sparse.items():
+        idx = int(idx_str)
+        if idx < len(doc):
+            doc[idx]._.remorph = val
+
+
 @dataclass
 class CacheConfig:
     """Configuration for persistent disk caching.
@@ -135,7 +175,11 @@ class DiskCache:
 
         doc_bin = DocBin().from_disk(path)
         docs = list(doc_bin.get_docs(vocab))
-        return docs[0] if docs else None
+        if not docs:
+            return None
+        doc = docs[0]
+        _restore_remorph(doc)
+        return doc
 
     def put(self, fileid: str, doc: Doc, **extra_meta: Any) -> None:
         """Persist a Doc to disk.
@@ -156,6 +200,7 @@ class DiskCache:
         path = self._dir / filename
 
         doc_bin = DocBin(store_user_data=True)
+        _stash_remorph(doc)
         _sanitize_user_data(doc)
         doc_bin.add(doc)
         doc_bin.to_disk(path)
