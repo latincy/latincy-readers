@@ -68,12 +68,12 @@ class TestGreekTesseraeReader:
         assert "grc_text_tesserae" in GreekTesseraeReader.DEFAULT_SUBDIR
 
     def test_model_defaults(self, greek_tesserae_dir):
-        """Default model is OdyCy, language is grc."""
+        """Default model is grc_dep_web_lg, language is grc."""
         reader = GreekTesseraeReader(
             root=greek_tesserae_dir,
             annotation_level=AnnotationLevel.NONE,
         )
-        assert reader._model_name == "grc_odycy_joint_sm"
+        assert reader._model_name == "grc_dep_web_lg"
         assert reader._lang == "grc"
 
     # -------------------------------------------------------------------------
@@ -324,14 +324,14 @@ class TestGreekTesseraeSearch:
 
 
 class TestGreekTesseraeNLP:
-    """Test BASIC/FULL annotation levels with OdyCy.
+    """Test BASIC/FULL annotation levels with LatinCy Greek.
 
-    These tests are skipped if OdyCy is not installed.
+    These tests are skipped if LatinCy Greek is not installed.
     """
 
     @pytest.fixture
     def reader(self, greek_tesserae_dir):
-        pytest.importorskip("grc_odycy_joint_sm")
+        pytest.importorskip("grc_dep_web_lg")
         return GreekTesseraeReader(
             root=greek_tesserae_dir,
             fileids="*.tess",
@@ -353,7 +353,7 @@ class TestGreekTesseraeNLP:
         assert len(lemmas) > 0
 
     def test_concordance_works(self, reader):
-        """concordance() works with Greek text and OdyCy."""
+        """concordance() works with Greek text and LatinCy Greek."""
         conc = reader.concordance()
         assert isinstance(conc, dict)
         assert len(conc) > 0

@@ -5,7 +5,7 @@ This package provides readers for various Latin text corpora with spaCy integrat
 
 Readers:
     - TesseraeReader: Tesserae citation format (.tess files)
-    - GreekTesseraeReader: Greek Tesserae corpus with OdyCy integration
+    - GreekTesseraeReader: Greek Tesserae corpus with LatinCy Greek integration
     - PlaintextReader: Generic plaintext files
     - LatinLibraryReader: The Latin Library corpus
     - TEIReader: TEI/XML format base class
