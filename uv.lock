@@ -718,7 +718,7 @@ wheels = [
 
 [[package]]
 name = "latincy-readers"
-version = "1.1.0"
+version = "1.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "conllu" },
@@ -731,9 +731,15 @@ dependencies = [
 [package.optional-dependencies]
 dev = [
     { name = "mypy" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+]
+vectors = [
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 
 [package.metadata]
@@ -742,13 +748,15 @@ requires-dist = [
     { name = "lxml", specifier = ">=5.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0" },
     { name = "natsort", specifier = ">=8.0" },
+    { name = "numpy", marker = "extra == 'dev'", specifier = ">=1.24" },
+    { name = "numpy", marker = "extra == 'vectors'", specifier = ">=1.24" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1" },
     { name = "spacy", specifier = ">=3.7" },
     { name = "textacy", specifier = ">=0.13" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["vectors", "dev"]
 
 [[package]]
 name = "librt"
