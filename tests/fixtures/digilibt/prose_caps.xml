@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title>Peregrinatio Egeriae</title>
+        <author xml:id="AUT000000">
+          <persName type="usualname">Anonymus</persName>
+          <persName type="fullname">Anonymus</persName>
+          <date from="-0001" to="-0002"/>
+        </author>
+      </titleStmt>
+      <publicationStmt>
+        <publisher>digilibLT</publisher>
+        <pubPlace>Vercelli</pubPlace>
+        <date>2015</date>
+        <availability status="free">
+          <p>CC BY-NC-SA 3.0 IT</p>
+        </availability>
+        <idno>DLT000405</idno>
+      </publicationStmt>
+      <sourceDesc>
+        <bibl type="FLAT">Peregrinatio Egeriae, ed. A. Franceschini et R. Weber (CCL 175), Turnhout 1965.</bibl>
+      </sourceDesc>
+    </fileDesc>
+    <encodingDesc>
+      <projectDesc>
+        <p>digilibLT. Biblioteca digitale di testi latini tardoantichi.</p>
+      </projectDesc>
+    </encodingDesc>
+    <profileDesc>
+      <langUsage>
+        <language ident="la">Latino</language>
+      </langUsage>
+      <creation>
+        <date when="0384">384 ca.</date>
+      </creation>
+    </profileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <div type="cap" n="1" xml:id="CID001">
+        <p><milestone unit="par" n="1"/>Nobis autem euntibus peruenimus ad quendam locum, ubi se tamen montes illi aperientes faciebant uallem infinitam.</p>
+        <p><milestone unit="par" n="2"/>Vallis autem ipsa ingens est ualde, iacens subter latus montis Dei.</p>
+      </div>
+      <div type="cap" n="2" xml:id="CID002">
+        <p><milestone unit="par" n="1"/>Itaque ergo sabbato sera ingressi sumus montem et peruenimus ad monasteria quaedam.</p>
+      </div>
+      <div type="cap" n="3" xml:id="CID003">
+        <p><milestone unit="par" n="1"/>Ipse autem <supplied>locus</supplied> in extremo iam montis est. <note>Textual note here.</note></p>
+      </div>
+    </body>
+  </text>
+</TEI>

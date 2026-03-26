@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title>De controuersiis agrorum</title>
+        <author xml:id="AUT000003">
+          <persName type="usualname">Agennius Vrbicus</persName>
+          <persName type="fullname">Agennius Vrbicus</persName>
+          <date from="0399" to="0499"/>
+        </author>
+      </titleStmt>
+      <publicationStmt>
+        <publisher>digilibLT</publisher>
+        <pubPlace>Vercelli</pubPlace>
+        <date>2011</date>
+        <availability status="free">
+          <p>CC BY-NC-SA 3.0 IT</p>
+        </availability>
+        <idno>DLT000001</idno>
+      </publicationStmt>
+      <sourceDesc>
+        <bibl type="FLAT">Agennius Vrbicus, De controuersiis agrorum, ed. B. Campbell, The Writings of the Roman Land Surveyors, London 2000.</bibl>
+      </sourceDesc>
+    </fileDesc>
+    <profileDesc>
+      <langUsage>
+        <language ident="la">Latino</language>
+      </langUsage>
+    </profileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <p><milestone unit="page" n="p. 20 Thulin"/>Aduersantur, ne quid amplius quam assignatum est possideatur.</p>
+      <p>Si enim uox, quam natura singulis dedit, non sufficit, quo minus bene loquamur.</p>
+      <p><supplied>De positione terminorum</supplied></p>
+      <p>Terminos autem ideo in finibus constituere solent, ut eis praetereuntibus iter demonstrent.</p>
+    </body>
+  </text>
+</TEI>

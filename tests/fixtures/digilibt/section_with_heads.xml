@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title>Fragmentum Bobiense de metris</title>
+        <author xml:id="AUT000000">
+          <persName type="usualname">Anonymus</persName>
+          <persName type="fullname">Anonymus</persName>
+          <date from="-0001" to="-0002"/>
+        </author>
+      </titleStmt>
+      <publicationStmt>
+        <publisher>digilibLT</publisher>
+        <pubPlace>Vercelli</pubPlace>
+        <date>2016</date>
+        <availability status="free">
+          <p>CC BY-NC-SA 3.0 IT</p>
+        </availability>
+        <idno>DLT000200</idno>
+      </publicationStmt>
+      <sourceDesc>
+        <bibl type="FLAT">Fragmentum Bobiense de metris, ed. H. Keil, Grammatici Latini VI, Leipzig 1874.</bibl>
+      </sourceDesc>
+    </fileDesc>
+    <profileDesc>
+      <langUsage>
+        <language ident="la">Latino</language>
+      </langUsage>
+    </profileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <head>Fragmentum Bobiense de metris</head>
+      <div type="section" xml:id="SID001">
+        <head>de arte metrica</head>
+        <p>Metrum phalaecium pedibus his constat: spondeo, dactylo, tribus trocheis.</p>
+        <p>Metrum asclepiadeum his pedibus constat: spondeo, dactylo, dactylo, spondeo.</p>
+      </div>
+    </body>
+  </text>
+</TEI>
