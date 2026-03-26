@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title>Excerpta de comoedia</title>
+        <author xml:id="AUT000066">
+          <persName type="usualname">Donatus, Aelius</persName>
+          <persName type="fullname">Aelius Donatus</persName>
+          <date from="0299" to="0399"/>
+        </author>
+      </titleStmt>
+      <publicationStmt>
+        <publisher>digilibLT</publisher>
+        <pubPlace>Vercelli</pubPlace>
+        <date>2013</date>
+        <availability status="free">
+          <p>CC BY-NC-SA 4.0</p>
+        </availability>
+        <idno>DLT000150</idno>
+      </publicationStmt>
+      <sourceDesc>
+        <bibl type="FLAT">Donatus, Excerpta de comoedia, ed. P. Wessner, Leipzig 1902.</bibl>
+      </sourceDesc>
+    </fileDesc>
+    <profileDesc>
+      <langUsage>
+        <language ident="la">Latino</language>
+      </langUsage>
+    </profileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <div type="lib" n="V" xml:id="LID001">
+        <div type="cap" n="1" xml:id="CID101">
+          <p>Comoedia est fabula diuersa instituta continens affectuum ciuilium ac priuatorum.</p>
+        </div>
+        <div type="cap" n="2" xml:id="CID102">
+          <p>Comoediae autem more antiquo dictae, quia in uicis huiusmodi carmina agebantur.</p>
+          <lg>
+            <l>Suspendit picta uultum mentemque tabella,</l>
+            <l>idque prius quam te ceperit ulla domus.</l>
+          </lg>
+        </div>
+      </div>
+      <div type="lib" n="VI" xml:id="LID002">
+        <div type="cap" n="1" xml:id="CID201">
+          <p>Fabula generale nomen est: eius duae primae partes, tragoedia et comoedia.</p>
+        </div>
+      </div>
+    </body>
+  </text>
+</TEI>
