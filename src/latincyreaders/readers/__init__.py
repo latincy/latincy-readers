@@ -4,6 +4,7 @@ from latincyreaders.readers.tesserae import TesseraeReader
 from latincyreaders.readers.greek_tesserae import GreekTesseraeReader
 from latincyreaders.readers.plaintext import PlaintextReader, LatinLibraryReader
 from latincyreaders.readers.tei import TEIReader, PerseusReader
+from latincyreaders.readers.digilibt import DigilibLTReader
 from latincyreaders.readers.wikisource import WikiSourceReader
 from latincyreaders.readers.ud import (
     UDReader,
@@ -24,6 +25,7 @@ __all__ = [
     "LatinLibraryReader",
     "TEIReader",
     "PerseusReader",
+    "DigilibLTReader",
     "WikiSourceReader",
     # Universal Dependencies readers
     "UDReader",

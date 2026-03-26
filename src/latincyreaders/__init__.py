@@ -48,6 +48,7 @@ from latincyreaders.readers.tesserae import TesseraeReader
 from latincyreaders.readers.greek_tesserae import GreekTesseraeReader
 from latincyreaders.readers.plaintext import PlaintextReader, LatinLibraryReader
 from latincyreaders.readers.tei import TEIReader, PerseusReader
+from latincyreaders.readers.digilibt import DigilibLTReader
 from latincyreaders.readers.camena import CamenaReader
 from latincyreaders.readers.txtdown import TxtdownReader
 from latincyreaders.readers.wikisource import WikiSourceReader
@@ -74,6 +75,7 @@ __all__ = [
     "LatinLibraryReader",
     "TEIReader",
     "PerseusReader",
+    "DigilibLTReader",
     "CamenaReader",
     "TxtdownReader",
     "WikiSourceReader",
