@@ -71,6 +71,9 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# Repo-root docs/ — design notes live in .claude/docs/, not in the package
+/docs/
+
 # PyBuilder
 .pybuilder/
 target/
