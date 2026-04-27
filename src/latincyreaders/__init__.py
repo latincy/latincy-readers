@@ -66,7 +66,7 @@ from latincyreaders.nlp.backends import NLPBackend, SpaCyBackend
 from latincyreaders.utils.metadata import MetadataManager
 from latincyreaders.cache import CacheConfig, DiskCache, CanonicalAnnotationStore, CanonicalConfig
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 __all__ = [
     # Readers
     "TesseraeReader",

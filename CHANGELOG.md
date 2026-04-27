@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-04-27
+
+### Added
+
+- **DigilibLTReader** for the [digilibLT](http://digiliblt.uniupo.it) corpus
+  (Digital Library of Late-Antique Latin Texts) — chapter-aware reader for all
+  structural patterns in the collection (flat `<p>`, `<div type="cap">`, nested
+  `lib`/`cap`, `section` with `<head>`, verse `<lg>/<l>`)
+  - Chapter-level structure exposed as named spans (`doc.spans["chapters"]`)
+  - Rich metadata extraction: DLT ID, author (via `persName[@type='usualname']`),
+    source bibliography, creation date
+  - `use_symbols=True` (default) strips text-critical marks (`< >`, `[ ]`, `{ }`,
+    `†`, `***`) and expands abbreviations (`M(arcus)` → `Marcus`) before NLP
+  - `chapters(as_text=True)` yields `(citation, text)` tuples with zero NLP overhead
+
+## [1.4.1] - 2026-03-20
+
+### Added
+
+- **Corrections module** for tracking token-level human corrections across model
+  upgrades — extract, save, load, and apply correction workflow
+- **Install extras** for [LatinCy](https://github.com/diyclassics/latincy) model
+  wheels (hosted on Hugging Face): `[la]` (la_core_web_lg 3.9.0),
+  `[grc]` (grc_dep_web_lg 3.8.1), and `[all]` for both
+
+### Changed
+
+- `token._.remorph` is now persisted through `DocBin` serialization (stashed in
+  `doc.user_data`, restored on load) so cached docs preserve remorph annotations
+- README install instructions updated for the new model extras
+- Greek model switched from OdyCy to LatinCy `grc_dep_web_lg` (merged from
+  `update-greek-model-v1.5`)
+
 ## [1.4.0] - 2026-03-16
 
 ### Added

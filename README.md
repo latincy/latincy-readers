@@ -6,7 +6,7 @@
 
 Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) NLP integration.
 
-Version 1.4.1; Python 3.10+; LatinCy 3.9.0+
+Version 1.5.0; Python 3.10+; LatinCy 3.9.0+
 
 ## Installation
 
@@ -64,6 +64,7 @@ for text in reader.texts():
 | `TEIReader` | `.xml` | No | TEI-XML documents |
 | `PerseusReader` | `.xml` | No | Perseus Digital Library TEI |
 | `CamenaReader` | `.xml` | Yes | CAMENA Neo-Latin corpus |
+| `DigilibLTReader` | `.xml` | No | digilibLT Late-Antique Latin TEI corpus |
 | `TxtdownReader` | `.txtd` | No | Txtdown format with citations |
 | `UDReader` | `.conllu` | No | Universal Dependencies CoNLL-U |
 | `LatinUDReader` | `.conllu` | Yes | All 6 Latin UD treebanks |
@@ -147,6 +148,37 @@ LatinUDReader.download_all()  # Download all 6 treebanks
 ```
 
 **Note:** Unlike other readers, `UDReader` constructs spaCy Docs directly from gold UD annotations rather than running the spaCy NLP pipeline.
+
+### digilibLT (DigilibLTReader)
+
+Read TEI-XML files from [digilibLT](http://digiliblt.uniupo.it) (Digital Library of Late-Antique Latin Texts). Handles the structural variation found across the collection — flat `<p>` paragraphs, `<div type="cap">` chapters, nested `<div type="lib">` → `<div type="cap">` book/chapter hierarchies, single `<div type="section">` with `<head>` elements, and verse `<lg>/<l>` line groups — and exposes chapter-level structure as named spans:
+
+```python
+from latincyreaders import DigilibLTReader
+
+reader = DigilibLTReader("/path/to/digilibt/xml")
+
+# Rich metadata from teiHeader: DLT ID, author (via persName), source, creation date
+for meta in reader.headers():
+    print(meta["dlt_id"], meta.get("author"), meta.get("title"))
+
+# Chapter-aware iteration — Spans with citations
+for ch in reader.chapters():
+    print(f"{ch._.citation}: {ch.text[:60]}...")
+
+# Or as (citation, text) tuples without NLP overhead
+for citation, text in reader.chapters(as_text=True):
+    print(f"{citation}: {text[:60]}...")
+
+# Chapter spans are also attached to each Doc
+for doc in reader.docs():
+    for ch in doc.spans.get("chapters", []):
+        print(ch._.citation)
+```
+
+**Text-critical symbols.** With `use_symbols=True` (default), the reader strips editorial marks before NLP processing — `<supplied>` → `supplied`, `[secluded]` removed, `{corrected}` → `corrected`, `†crux†` → `crux`, `***` lacuna markers removed, and `M(arcus)` → `Marcus` abbreviation expansion. Set `use_symbols=False` to preserve the marks verbatim.
+
+**License:** digilibLT texts are released under CC BY-NC-SA.
 
 ## Core API
 
@@ -378,6 +410,7 @@ if not result.is_valid:
 - [Perseus Digital Library TEI](https://www.perseus.tufts.edu/)
 - [Latin Library](https://github.com/cltk/lat_text_latin_library)
 - [CAMENA Neo-Latin](https://github.com/nevenjovanovic/camena-neolatinlit)
+- [digilibLT](http://digiliblt.uniupo.it) (Digital Library of Late-Antique Latin Texts)
 - [Universal Dependencies Latin Treebanks](https://universaldependencies.org/) (PROIEL, Perseus, ITTB, LLCT, UDante, CIRCSE)
 - Any plaintext, TEI-XML, or CoNLL-U collection
 
