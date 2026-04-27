@@ -20,6 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `†`, `***`) and expands abbreviations (`M(arcus)` → `Marcus`) before NLP
   - `chapters(as_text=True)` yields `(citation, text)` tuples with zero NLP overhead
 
+### Changed
+
+- **Model installation moved from extras to documented URLs.** The `[la]`,
+  `[grc]`, and `[all]` install extras (added in 1.4.1 but never published — they
+  used direct-URL refs that PyPI rejects on upload) have been removed. Install
+  LatinCy models separately via their Hugging Face wheel URLs — see the README
+  *Models* section. This mirrors spaCy's own pattern for language models.
+
+### Fixed
+
+- Project URLs in `pyproject.toml` corrected from `github.com/diyclassics/...`
+  to `github.com/latincy/...` (the actual repo location).
+
 ## [1.4.1] - 2026-03-20
 
 ### Added

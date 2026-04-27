@@ -11,23 +11,31 @@ Version 1.5.0; Python 3.10+; LatinCy 3.9.0+
 ## Installation
 
 ```bash
-# Install with Latin model (recommended)
-pip install latincy-readers[la]
-
-# Install with Greek model
-pip install latincy-readers[grc]
-
-# Install with all models and vector support
-pip install latincy-readers[all]
-
-# Install without models (bring your own)
+# Install the package
 pip install latincy-readers
 
+# With sentence vector search support
+pip install latincy-readers[vectors]
+
 # For development (editable install)
-git clone https://github.com/diyclassics/latincy-readers.git
+git clone https://github.com/latincy/latincy-readers.git
 cd latincy-readers
 pip install -e ".[dev]"
 ```
+
+### Models
+
+LatinCy NLP models are hosted on Hugging Face and installed separately (mirroring spaCy's pattern for language models). Install whichever you need:
+
+```bash
+# Latin model (la_core_web_lg)
+pip install https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.9.0-py3-none-any.whl
+
+# Ancient Greek model (grc_dep_web_lg)
+pip install https://huggingface.co/latincy/grc_dep_web_lg/resolve/main/grc_dep_web_lg-3.8.1-py3-none-any.whl
+```
+
+You can skip model installation if you only need raw text iteration or `AnnotationLevel.TOKENIZE`.
 
 ## Quick Start
 
