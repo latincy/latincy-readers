@@ -9,6 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **FormulaeReader** for the [Formulae-Litterae-Chartae](https://github.com/Formulae-Litterae-Chartae/formulae-open)
+  project (University of Hamburg) — reader for early medieval Latin charters
+  and formularies (500–1000 CE), CC-BY 4.0
+  - Extracts Latin text from ``<div type="edition" xml:lang="lat">``; French
+    regest (``<front>``) is excluded
+  - Words are encoded as ``<w>`` elements; joined into running prose via
+    ``itertext()``; ``lemmaRef`` attributes silently ignored
+  - Metadata per Doc: ``cts_urn``, ``collection`` (from URN prefix),
+    ``title``, ``date``, ``filename``
+  - File pattern: ``**/*.lat*.xml`` (excludes ``__capitains__.xml``)
+  - ``headers()`` for zero-NLP-overhead metadata iteration
+
+- **EpistolaeReader** for the [Epistolae](https://github.com/ccnmtl/epistolae-hugo)
+  project (Columbia University / University of Siena) — reader for ~1,100
+  medieval Latin letters by and to women, 4th–13th century, CC-BY-NC-SA 4.0
+  - Parses Hugo Markdown (``.html.md``) files; extracts only the Latin
+    ``"Original letter:"`` section, discarding English translation,
+    historical context, and scholarly apparatus
+  - YAML frontmatter metadata: ``letter_id``, ``senders``, ``receivers``,
+    ``date``, ``title``
+  - ``headers()`` for zero-NLP-overhead frontmatter scanning
+
+- **CSELReader** for the [Corpus Scriptorum Ecclesiasticorum Latinorum](https://github.com/OpenGreekAndLatin/csel-dev)
+  — chapter-aware reader for the CSEL digital edition (Open Greek and Latin Project)
+  - Handles the two-level `book`/`section` textpart hierarchy; each
+    `<div subtype="section">` becomes a span in `doc.spans["chapters"]`
+  - Citations follow the form `"book 1, section 3"` (uses `subtype=` attribute)
+  - Metadata per Doc: `author`, `title` (prefers `xml:lang="lat"`), `cts_urn`, `filename`
+  - Inherits critical mark normalization from DigilibLTReader (`use_symbols=True`)
+  - `<note>` elements stripped from body text by default
+  - `headers()` and `chapters(as_text=True)` for zero-NLP-overhead iteration
+  - File pattern: `**/*.opp-lat1.xml`
+  - License: CC-BY-SA 4.0
+
 - **PTAReader** for the [Patristic Text Archive](https://pta.bbaw.de) (PTA)
   — section-aware reader for ~210 Greek texts (~2.3M tokens) and Latin texts,
   all CC-BY 4.0

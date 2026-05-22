@@ -13,6 +13,9 @@ Readers:
     - CamenaReader: CAMENA Neo-Latin corpus
     - DigilibLTReader: digilibLT Late-Antique Latin TEI corpus
     - PTAReader: Patristic Text Archive (Greek and Latin, CC-BY 4.0)
+    - CSELReader: Corpus Scriptorum Ecclesiasticorum Latinorum (CC-BY-SA 4.0)
+    - FormulaeReader: Formulae-Litterae-Chartae medieval charters (CC-BY 4.0)
+    - EpistolaeReader: Epistolae medieval women's Latin letters (CC-BY-NC-SA 4.0)
     - TxtdownReader: TXT-down format (Tesserae derivative)
     - UDReader: Universal Dependencies CoNLL-U format
     - LatinUDReader: All 6 Latin UD treebanks with auto-download
@@ -52,6 +55,9 @@ from latincyreaders.readers.plaintext import PlaintextReader, LatinLibraryReader
 from latincyreaders.readers.tei import TEIReader, PerseusReader
 from latincyreaders.readers.digilibt import DigilibLTReader
 from latincyreaders.readers.pta import PTAReader
+from latincyreaders.readers.csel import CSELReader
+from latincyreaders.readers.formulae import FormulaeReader
+from latincyreaders.readers.epistolae import EpistolaeReader
 from latincyreaders.readers.camena import CamenaReader
 from latincyreaders.readers.txtdown import TxtdownReader
 from latincyreaders.readers.wikisource import WikiSourceReader
@@ -80,6 +86,9 @@ __all__ = [
     "PerseusReader",
     "DigilibLTReader",
     "PTAReader",
+    "CSELReader",
+    "FormulaeReader",
+    "EpistolaeReader",
     "CamenaReader",
     "TxtdownReader",
     "WikiSourceReader",
