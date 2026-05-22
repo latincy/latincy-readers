@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **PTAReader** for the [Patristic Text Archive](https://pta.bbaw.de) (PTA)
+  — section-aware reader for ~210 Greek texts (~2.3M tokens) and Latin texts,
+  all CC-BY 4.0
+  - Each `<div type="textpart">` section yields a separate Doc, preserving
+    CTS URN, language (`lat`/`grc`), author, title, div_type, div_n, and
+    citation in `doc._.metadata`
+  - Auto-download via `DownloadableCorpusMixin` (clones from GitHub into
+    `~/latincy_data/pta_data` or `$PTA_PATH`)
+  - `<note>` elements stripped from body text by default
+  - Language detection from `xml:lang` attribute with filename-suffix fallback
+
 ## [1.5.0] - 2026-04-27
 
 ### Added

@@ -73,6 +73,7 @@ for text in reader.texts():
 | `PerseusReader` | `.xml` | No | Perseus Digital Library TEI |
 | `CamenaReader` | `.xml` | Yes | CAMENA Neo-Latin corpus |
 | `DigilibLTReader` | `.xml` | No | digilibLT Late-Antique Latin TEI corpus |
+| `PTAReader` | `.xml` | Yes | Patristic Text Archive (Greek & Latin) |
 | `TxtdownReader` | `.txtd` | No | Txtdown format with citations |
 | `UDReader` | `.conllu` | No | Universal Dependencies CoNLL-U |
 | `LatinUDReader` | `.conllu` | Yes | All 6 Latin UD treebanks |
@@ -187,6 +188,48 @@ for doc in reader.docs():
 **Text-critical symbols.** With `use_symbols=True` (default), the reader strips editorial marks before NLP processing — `<supplied>` → `supplied`, `[secluded]` removed, `{corrected}` → `corrected`, `†crux†` → `crux`, `***` lacuna markers removed, and `M(arcus)` → `Marcus` abbreviation expansion. Set `use_symbols=False` to preserve the marks verbatim.
 
 **License:** digilibLT texts are released under CC BY-NC-SA.
+
+### Patristic Text Archive (PTAReader)
+
+Read TEI-XML files from the [Patristic Text Archive](https://pta.bbaw.de) (Berlin-Brandenburg Academy of Sciences), which provides open-access ancient Christian texts in Greek and Latin under CC-BY 4.0.
+
+The corpus contains ~210 Greek texts (~2.3M tokens) and a growing Latin collection. Each file yields one Doc per `<div type="textpart">` section, with CTS URN, language, author, title, and per-section citation in metadata.
+
+```python
+from latincyreaders import PTAReader, AnnotationLevel
+
+# Auto-downloads to ~/latincy_data/pta_data on first use
+reader = PTAReader()
+
+# Or point at a local checkout
+reader = PTAReader("/path/to/pta_data/data")
+
+# Filter by language
+for doc in reader.docs(fileids="*lat*.xml"):
+    meta = doc._.metadata
+    print(f"{meta['urn']} §{meta['citation']}: {doc.text[:80]}")
+
+# Use AnnotationLevel.TOKENIZE for fast iteration without full NLP
+reader = PTAReader(
+    "/path/to/pta_data/data",
+    annotation_level=AnnotationLevel.TOKENIZE,
+)
+texts = list(reader.texts(fileids="*grc*.xml"))
+```
+
+**Metadata per Doc:**
+
+| Key | Example | Description |
+|-----|---------|-------------|
+| `urn` | `urn:cts:pta:pta0001.pta014.pta-lat1` | Work-level CTS URN |
+| `language` | `lat` or `grc` | Language code |
+| `author` | `Severianus Gabalensis` | Author from teiHeader |
+| `title` | `In illud: Pone manum tuam` | Work title |
+| `div_type` | `section` | Textpart subtype |
+| `div_n` | `1` | Section number |
+| `citation` | `1` | Human-readable section reference |
+
+**License:** PTA texts are CC-BY 4.0 (per-file, see `<availability>` in each header).
 
 ## Core API
 
@@ -419,6 +462,7 @@ if not result.is_valid:
 - [Latin Library](https://github.com/cltk/lat_text_latin_library)
 - [CAMENA Neo-Latin](https://github.com/nevenjovanovic/camena-neolatinlit)
 - [digilibLT](http://digiliblt.uniupo.it) (Digital Library of Late-Antique Latin Texts)
+- [Patristic Text Archive](https://pta.bbaw.de) (PTA — Greek and Latin patristic texts, CC-BY 4.0)
 - [Universal Dependencies Latin Treebanks](https://universaldependencies.org/) (PROIEL, Perseus, ITTB, LLCT, UDante, CIRCSE)
 - Any plaintext, TEI-XML, or CoNLL-U collection
 

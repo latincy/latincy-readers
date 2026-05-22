@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title>Minimal PTA Test</title>
+        <author><persName>Testus Auctor</persName></author>
+      </titleStmt>
+      <publicationStmt>
+        <idno type="PTA">pta9999.pta001</idno>
+      </publicationStmt>
+      <sourceDesc><p/></sourceDesc>
+    </fileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <div type="edition" xml:lang="lat" n="urn:cts:pta:pta9999.pta001.pta-lat1">
+        <div type="textpart" subtype="section" n="1">
+          <p>Salve munde. Hic textus sine nota est.</p>
+          <note>do not include this note text</note>
+        </div>
+      </div>
+    </body>
+  </text>
+</TEI>

@@ -68,3 +68,9 @@ def wikisource_dir(fixtures_dir) -> Path:
 def digilibt_dir(fixtures_dir) -> Path:
     """Path to digilibLT test fixtures."""
     return fixtures_dir / "digilibt"
+
+
+@pytest.fixture
+def pta_dir(fixtures_dir) -> Path:
+    """Path to PTA test fixtures."""
+    return fixtures_dir / "pta"
