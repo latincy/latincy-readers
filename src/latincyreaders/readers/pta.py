@@ -47,12 +47,67 @@ class PTAReader(DownloadableCorpusMixin, TEIReader):
 
     CORPUS_URL = "https://github.com/PatristicTextArchive/pta_data.git"
     ENV_VAR = "PTA_PATH"
-    DEFAULT_SUBDIR = "pta_data"
+    DEFAULT_SUBDIR = "pta_data"       # git clone target under ~/latincy_data/
+    _DATA_SUBDIR = "data"             # subdirectory inside the clone that has texts
     _FILE_CHECK_PATTERN = "**/*.xml"
 
     @classmethod
+    def default_root(cls) -> Path:
+        """Return the default reader root (the ``data/`` subdirectory of the clone).
+
+        Checks ``$PTA_PATH`` first, then ``~/latincy_data/pta_data/data``.
+        """
+        import os
+        from latincyreaders.core.download import LATINCY_DATA
+
+        if env_path := os.environ.get(cls.ENV_VAR):
+            return Path(env_path)
+        return LATINCY_DATA / cls.DEFAULT_SUBDIR / cls._DATA_SUBDIR
+
+    @classmethod
+    def _get_default_root(cls, auto_download: bool = True) -> Path:
+        """Return the reader root, cloning the repo first if necessary."""
+        import os
+        from latincyreaders.core.download import LATINCY_DATA
+        import subprocess
+
+        if env_path := os.environ.get(cls.ENV_VAR):
+            data_root = Path(env_path)
+        else:
+            data_root = LATINCY_DATA / cls.DEFAULT_SUBDIR / cls._DATA_SUBDIR
+
+        if data_root.exists() and any(data_root.glob(cls._FILE_CHECK_PATTERN)):
+            return data_root
+
+        if not auto_download:
+            raise FileNotFoundError(
+                f"PTA corpus not found at {data_root}. "
+                f"Set $PTA_PATH to the pta_data/data/ directory, pass root= "
+                f"explicitly, or set auto_download=True."
+            )
+
+        clone_target = data_root.parent  # ~/latincy_data/pta_data
+        print(f"PTAReader corpus not found at {clone_target}")
+        response = input("Download from GitHub (~400 MB)? [y/N]: ").strip().lower()
+
+        if response in ("y", "yes"):
+            clone_target.parent.mkdir(parents=True, exist_ok=True)
+            print(f"Cloning {cls.CORPUS_URL} to {clone_target}...")
+            subprocess.run(
+                ["git", "clone", "--depth", "1", cls.CORPUS_URL, str(clone_target)],
+                check=True,
+            )
+            return data_root
+        else:
+            raise FileNotFoundError(
+                f"PTA corpus not found. Download manually:\n"
+                f"  git clone --depth 1 {cls.CORPUS_URL} {clone_target}"
+            )
+
+    @classmethod
     def _default_file_pattern(cls) -> str:
-        return "**/*.xml"
+        # Match pta-*.xml files (text files) and skip __cts__.xml metadata files
+        return "**/*.pta-*.xml"
 
     def __init__(
         self,
