@@ -11,6 +11,8 @@ Readers:
     - TEIReader: TEI/XML format base class
     - PerseusReader: Perseus Digital Library
     - CamenaReader: CAMENA Neo-Latin corpus
+    - DigilibLTReader: digilibLT Late-Antique Latin TEI corpus
+    - PTAReader: Patristic Text Archive (Greek and Latin, CC-BY 4.0)
     - TxtdownReader: TXT-down format (Tesserae derivative)
     - UDReader: Universal Dependencies CoNLL-U format
     - LatinUDReader: All 6 Latin UD treebanks with auto-download
@@ -49,6 +51,7 @@ from latincyreaders.readers.greek_tesserae import GreekTesseraeReader
 from latincyreaders.readers.plaintext import PlaintextReader, LatinLibraryReader
 from latincyreaders.readers.tei import TEIReader, PerseusReader
 from latincyreaders.readers.digilibt import DigilibLTReader
+from latincyreaders.readers.pta import PTAReader
 from latincyreaders.readers.camena import CamenaReader
 from latincyreaders.readers.txtdown import TxtdownReader
 from latincyreaders.readers.wikisource import WikiSourceReader
@@ -76,6 +79,7 @@ __all__ = [
     "TEIReader",
     "PerseusReader",
     "DigilibLTReader",
+    "PTAReader",
     "CamenaReader",
     "TxtdownReader",
     "WikiSourceReader",
