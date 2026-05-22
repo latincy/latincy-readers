@@ -74,3 +74,21 @@ def digilibt_dir(fixtures_dir) -> Path:
 def pta_dir(fixtures_dir) -> Path:
     """Path to PTA test fixtures."""
     return fixtures_dir / "pta"
+
+
+@pytest.fixture
+def csel_dir(fixtures_dir) -> Path:
+    """Path to CSEL test fixtures."""
+    return fixtures_dir / "csel"
+
+
+@pytest.fixture
+def formulae_dir(fixtures_dir) -> Path:
+    """Path to Formulae-Litterae-Chartae test fixtures."""
+    return fixtures_dir / "formulae"
+
+
+@pytest.fixture
+def epistolae_dir(fixtures_dir) -> Path:
+    """Path to Epistolae test fixtures."""
+    return fixtures_dir / "epistolae"

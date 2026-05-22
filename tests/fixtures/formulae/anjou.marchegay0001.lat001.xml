@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader xml:lang="deu">
+    <fileDesc>
+      <titleStmt>
+        <title>Archives d'Anjou (Ed. Marchegay) Nr. 1</title>
+      </titleStmt>
+      <publicationStmt>
+        <publisher xml:lang="mul">Formulae-Litterae-Chartae Projekt</publisher>
+        <pubPlace>Hamburg</pubPlace>
+        <date when="2020"/>
+        <availability>
+          <licence target="https://creativecommons.org/licenses/by/4.0/">Distributed under a Creative Commons Attribution 4.0 International License.</licence>
+        </availability>
+      </publicationStmt>
+      <sourceDesc>
+        <biblStruct>
+          <monogr>
+            <title>Archives d'Anjou</title>
+            <editor>Paul Marchegay</editor>
+            <imprint>
+              <pubPlace>Angers</pubPlace>
+              <date when="1853" n="originalAusgabe">1853</date>
+            </imprint>
+          </monogr>
+        </biblStruct>
+      </sourceDesc>
+    </fileDesc>
+    <encodingDesc>
+      <refsDecl n="CTS">
+        <cRefPattern matchPattern="(.+)" n="charta" replacementPattern="#xpath(...)"/>
+      </refsDecl>
+    </encodingDesc>
+  </teiHeader>
+  <text type="charta" xml:id="anjou.marchegay0001">
+    <front xml:lang="fre">
+      <div type="section" subtype="regest">
+        <p>Carta Fulconis Nerrae, Andegavensium comitis, de vivario Bussiaco.</p>
+      </div>
+      <dateline><date when="1000"/></dateline>
+    </front>
+    <body>
+      <div type="edition" xml:lang="lat" n="urn:cts:formulae:anjou.marchegay0001.lat001">
+        <div type="textpart" subtype="charta" n="1">
+          <p xml:space="preserve"><w>Multipliciter</w> <w>multiplex</w> <w lemmaRef="misericordia">misericordia</w> <w>Dei</w> <w>perplurimum</w> <w>voluit</w> <w>honorari</w> <w>genus</w> <w>humanum</w>. <w>Ego</w> <w>quidem</w> <w>Fulco</w> <w lemmaRef="comes">comes</w> <w>dono</w> <w>sancto</w> <w>Martino</w>.</p>
+        </div>
+      </div>
+    </body>
+  </text>
+</TEI>

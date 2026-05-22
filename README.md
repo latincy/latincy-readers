@@ -74,6 +74,9 @@ for text in reader.texts():
 | `CamenaReader` | `.xml` | Yes | CAMENA Neo-Latin corpus |
 | `DigilibLTReader` | `.xml` | No | digilibLT Late-Antique Latin TEI corpus |
 | `PTAReader` | `.xml` | Yes | Patristic Text Archive (Greek & Latin) |
+| `CSELReader` | `.xml` | No | Corpus Scriptorum Ecclesiasticorum Latinorum |
+| `FormulaeReader` | `.xml` | No | Formulae-Litterae-Chartae medieval charters |
+| `EpistolaeReader` | `.html.md` | No | Epistolae medieval women's Latin letters |
 | `TxtdownReader` | `.txtd` | No | Txtdown format with citations |
 | `UDReader` | `.conllu` | No | Universal Dependencies CoNLL-U |
 | `LatinUDReader` | `.conllu` | Yes | All 6 Latin UD treebanks |
@@ -230,6 +233,47 @@ texts = list(reader.texts(fileids="*grc*.xml"))
 | `citation` | `1` | Human-readable section reference |
 
 **License:** PTA texts are CC-BY 4.0 (per-file, see `<availability>` in each header).
+
+### CSEL (CSELReader)
+
+Read TEI-XML files from the [Corpus Scriptorum Ecclesiasticorum Latinorum](https://github.com/OpenGreekAndLatin/csel-dev) digital edition published by the Open Greek and Latin Project. The corpus contains Latin patristic and ecclesiastical texts encoded with a two-level `book`/`section` hierarchy.
+
+Each file yields one Doc with `doc.spans["chapters"]` containing Span objects for every `<div subtype="section">`. Citations follow the form `"book 1, section 3"`.
+
+```python
+from latincyreaders import CSELReader, AnnotationLevel
+
+# Point at a local clone of csel-dev
+reader = CSELReader("/path/to/csel-dev/data")
+
+# Iterate chapters with citations
+for doc in reader.docs():
+    meta = doc._.metadata
+    print(f"{meta['author']}: {meta['title']} ({meta['cts_urn']})")
+    for ch in doc.spans["chapters"]:
+        print(f"  {ch._.citation}: {ch.text[:80]}")
+
+# Fast header scan (no NLP)
+for h in reader.headers():
+    print(h["author"], h["cts_urn"])
+
+# Raw (citation, text) pairs with zero NLP overhead
+for citation, text in reader.chapters(as_text=True):
+    print(citation, text[:60])
+```
+
+**Metadata per Doc:**
+
+| Key | Example | Description |
+|-----|---------|-------------|
+| `author` | `Augustine` | Author from titleStmt |
+| `title` | `Confessiones` | Latin title (`xml:lang="lat"`) |
+| `cts_urn` | `urn:cts:latinLit:stoa0040.stoa001.opp-lat1` | CTS URN |
+| `filename` | `stoa0040.stoa001.opp-lat1.xml` | Source filename |
+
+**Chapter spans** (`doc.spans["chapters"]`): each Span carries `span._.citation` in the form `"book N, section N"`.
+
+**License:** CC-BY-SA 4.0.
 
 ## Core API
 

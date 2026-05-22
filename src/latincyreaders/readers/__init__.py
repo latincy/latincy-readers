@@ -6,6 +6,9 @@ from latincyreaders.readers.plaintext import PlaintextReader, LatinLibraryReader
 from latincyreaders.readers.tei import TEIReader, PerseusReader
 from latincyreaders.readers.digilibt import DigilibLTReader
 from latincyreaders.readers.pta import PTAReader
+from latincyreaders.readers.csel import CSELReader
+from latincyreaders.readers.formulae import FormulaeReader
+from latincyreaders.readers.epistolae import EpistolaeReader
 from latincyreaders.readers.wikisource import WikiSourceReader
 from latincyreaders.readers.ud import (
     UDReader,
@@ -28,6 +31,9 @@ __all__ = [
     "PerseusReader",
     "DigilibLTReader",
     "PTAReader",
+    "CSELReader",
+    "FormulaeReader",
+    "EpistolaeReader",
     "WikiSourceReader",
     # Universal Dependencies readers
     "UDReader",

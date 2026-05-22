@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader xml:lang="eng">
+    <fileDesc>
+      <titleStmt>
+        <title xml:lang="lat">Confessiones</title>
+        <author>Augustine</author>
+        <editor>Pius Knöll</editor>
+      </titleStmt>
+      <publicationStmt>
+        <authority>University of Leipzig</authority>
+        <idno type="filename">stoa0040.stoa001.opp-lat1.xml</idno>
+        <availability>
+          <licence target="https://creativecommons.org/licenses/by-sa/4.0/">Available under a Creative Commons Attribution-ShareAlike 4.0 International License</licence>
+        </availability>
+      </publicationStmt>
+      <sourceDesc>
+        <listBibl xml:lang="lat">
+          <biblStruct>
+            <monogr>
+              <author>Augustine</author>
+              <title xml:lang="lat">Sancti Aureli Augustini Opera</title>
+              <imprint>
+                <publisher>F. Tempsky</publisher>
+                <pubPlace>Vienna</pubPlace>
+                <date>1896</date>
+              </imprint>
+            </monogr>
+            <series>
+              <title level="s" xml:lang="lat">Corpus scriptorum ecclesiasticorum Latinorum</title>
+              <biblScope unit="volume">33</biblScope>
+            </series>
+          </biblStruct>
+        </listBibl>
+      </sourceDesc>
+    </fileDesc>
+    <encodingDesc>
+      <refsDecl n="CTS">
+        <cRefPattern n="section" matchPattern="(.+).(.+)" replacementPattern="#xpath(...)"/>
+        <cRefPattern n="book" matchPattern="(.+)" replacementPattern="#xpath(...)"/>
+      </refsDecl>
+    </encodingDesc>
+    <profileDesc>
+      <langUsage>
+        <language ident="lat">Latin</language>
+      </langUsage>
+    </profileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <div type="edition" xml:lang="lat" n="urn:cts:latinLit:stoa0040.stoa001.opp-lat1">
+        <div n="1" subtype="book" type="textpart">
+          <ab><title type="sub">LIBER PRIMVS.</title></ab>
+          <div n="1" subtype="section" type="textpart">
+            <p>Magnus es, domine, et laudabilis valde: magna virtus tua et sapientiae tuae non est numerus.
+            <note type="footnote">Ps. 144, 3.</note></p>
+          </div>
+          <div n="2" subtype="section" type="textpart">
+            <p>Et quomodo invocabo deum meum, deum et dominum meum, quoniam utique in me ipsum eum invocabo.</p>
+          </div>
+        </div>
+        <div n="2" subtype="book" type="textpart">
+          <ab><title type="sub">LIBER SECVNDVS.</title></ab>
+          <div n="1" subtype="section" type="textpart">
+            <p>Recordari volo praeteritas foeditates meas et carnales corruptiones animae meae, non quod eas amem, sed ut amem te, deus meus.</p>
+          </div>
+          <div n="2" subtype="section" type="textpart">
+            <p>Quid mihi erat in <supplied reason="lost">isto</supplied> furto et quid te, domine deus meus, imitari volui scelerate?</p>
+          </div>
+        </div>
+      </div>
+    </body>
+  </text>
+</TEI>
