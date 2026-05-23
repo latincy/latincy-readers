@@ -92,7 +92,7 @@ def mark_newlines_from_spans(doc: "Doc") -> None:
     semantics of ``str.splitlines(keepends=True)``: no spurious trailing \\n
     is appended to the final line.
     """
-    spans = doc.spans.get("lines", [])
+    spans = list(doc.spans.get("lines", []))
     for span in spans[:-1]:  # all-but-last: last line has no trailing \n
         if span:
             span[-1]._.newline_after = True
