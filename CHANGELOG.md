@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **EDHReader** for the [Epigraphic Database Heidelberg](https://github.com/epigraphic-database-heidelberg/data)
+  — reader for ~82,000 Latin (and Greek) inscriptions from across the
+  Roman Empire, CC-BY-SA 4.0
+  - Processes EpiDoc TEI-XML with Leiden-convention markup normalization:
+    abbreviations expanded (`<expan>` → combined form), editor restorations
+    kept (`<supplied>`), erasures dropped (`<del>`), Greek-only files skipped
+  - Line-level citation spans: ``doc.spans["lines"]`` with
+    ``span._.citation = "HD000001.N"``
+  - Metadata per Doc: ``hd_nr``, ``not_before``, ``not_after``, ``province``,
+    ``type_of_inscription`` (leading zeros stripped from dates)
+  - ``headers()`` for zero-NLP metadata iteration
+  - ``auto_download=True`` prompts to clone from GitHub
+  - Shared ``latincyreaders.utils.text_utils.find_line_in_doc_text`` extracted
+    from ``TxtdownReader`` — tolerates J/I, V/U normalization; used by both
+    readers for NLP-aware line-to-span mapping
+
 - **FormulaeReader** for the [Formulae-Litterae-Chartae](https://github.com/Formulae-Litterae-Chartae/formulae-open)
   project (University of Hamburg) — reader for early medieval Latin charters
   and formularies (500–1000 CE), CC-BY 4.0
