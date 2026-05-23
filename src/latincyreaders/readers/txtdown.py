@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from latincyreaders.core.base import BaseCorpusReader, AnnotationLevel
+from latincyreaders.nlp.pipeline import mark_newlines_from_spans
+from latincyreaders.utils.text_utils import find_line_in_doc_text as _find_line_in_doc_text
 
 if TYPE_CHECKING:
     from spacy.tokens import Doc, Span
@@ -364,6 +366,7 @@ class TxtdownReader(BaseCorpusReader):
 
         doc.spans["sections"] = section_spans
         doc.spans["lines"] = line_spans
+        mark_newlines_from_spans(doc)
 
     def sents_with_citations(
         self,

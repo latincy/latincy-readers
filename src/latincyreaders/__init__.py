@@ -63,6 +63,7 @@ from latincyreaders.readers.ud import (
     LatinUDReader,
 )
 from latincyreaders.nlp.backends import NLPBackend, SpaCyBackend
+from latincyreaders.nlp.pipeline import mark_newlines_from_spans
 from latincyreaders.utils.metadata import MetadataManager
 from latincyreaders.cache import CacheConfig, DiskCache, CanonicalAnnotationStore, CanonicalConfig
 
@@ -97,6 +98,7 @@ __all__ = [
     # NLP backends
     "NLPBackend",
     "SpaCyBackend",
+    "mark_newlines_from_spans",
     # Cache & persistence
     "CacheConfig",
     "DiskCache",
