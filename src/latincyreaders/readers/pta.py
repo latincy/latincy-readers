@@ -118,7 +118,7 @@ class PTAReader(DownloadableCorpusMixin, TEIReader):
         remove_notes: bool = True,
         cache: bool = False,
         cache_maxsize: int = 128,
-        auto_download: bool = True,
+        auto_download: bool = False,
         **kwargs,
     ):
         """Initialize the PTA reader.
