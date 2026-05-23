@@ -29,6 +29,7 @@ from lxml import etree
 
 from latincyreaders.core.base import BaseCorpusReader, AnnotationLevel
 from latincyreaders.core.download import DownloadableCorpusMixin
+from latincyreaders.nlp.pipeline import mark_newlines_from_spans
 from latincyreaders.readers.tei import TEIReader
 from latincyreaders.utils.text_utils import find_line_in_doc_text
 
@@ -488,3 +489,4 @@ class EDHReader(DownloadableCorpusMixin, TEIReader):
                 char_pos = end
 
         doc.spans["lines"] = line_spans
+        mark_newlines_from_spans(doc)
