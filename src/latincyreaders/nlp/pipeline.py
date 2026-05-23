@@ -59,9 +59,38 @@ def _register_extensions() -> None:
     if not Token.has_extension("ud"):
         Token.set_extension("ud", default=None)
 
+    # Line-boundary flag: True when this token is the last token on a source line.
+    # Set by mark_newlines_from_spans() after line spans are built.
+    # In la_core_web_lg the tokenizer collapses \n → space, so this is the only
+    # reliable way to recover newline positions post-NLP.
+    if not Token.has_extension("newline_after"):
+        Token.set_extension("newline_after", default=False)
+
+    # Reconstructs the original whitespace including newlines.
+    # "".join(t._.text_with_nl for t in doc) gives back the line-structured source.
+    if not Token.has_extension("text_with_nl"):
+        Token.set_extension(
+            "text_with_nl",
+            getter=lambda t: t.text + ("\n" if t._.newline_after else t.whitespace_),
+        )
+
 
 # Register on import
 _register_extensions()
+
+
+def mark_newlines_from_spans(doc: "Doc") -> None:
+    """Set ``Token._.newline_after = True`` on the last token of each line span.
+
+    Call this after ``doc.spans["lines"]`` has been populated. Works with any
+    reader that builds line spans — EDHReader, TxtdownReader, TesseraeReader, etc.
+
+    After this call, ``"".join(t._.text_with_nl for t in doc)`` reconstructs
+    the original line-structured text.
+    """
+    for span in doc.spans.get("lines", []):
+        if span:
+            span[-1]._.newline_after = True
 
 
 @lru_cache(maxsize=4)

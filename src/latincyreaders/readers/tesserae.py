@@ -16,6 +16,7 @@ from typing import Iterator, TYPE_CHECKING
 
 from latincyreaders.core.base import BaseCorpusReader, AnnotationLevel
 from latincyreaders.core.download import DownloadableCorpusMixin
+from latincyreaders.nlp.pipeline import mark_newlines_from_spans
 
 if TYPE_CHECKING:
     from spacy.tokens import Doc, Span
@@ -297,6 +298,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                 # Create citation spans
                 lines_data = file_metadata.get("_lines", [])
                 doc.spans["lines"] = self._make_line_spans(doc, lines_data)
+                mark_newlines_from_spans(doc)
 
                 # Store in LRU cache if enabled
                 if self._cache_enabled:
