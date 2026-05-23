@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from latincyreaders.core.base import BaseCorpusReader, AnnotationLevel
+from latincyreaders.utils.text_utils import find_line_in_doc_text as _find_line_in_doc_text
 
 if TYPE_CHECKING:
     from spacy.tokens import Doc, Span
@@ -154,61 +155,11 @@ class TxtdownReader(BaseCorpusReader):
     ) -> tuple[int, int]:
         """Locate ``line_text`` inside ``doc_text`` starting at ``start_pos``.
 
-        The NLP pipeline (LatinCy ``normer`` plus tokenization) rewrites the
-        text in ways a plain ``str.find`` cannot survive: J→I and V→U
-        orthographic normalization, whitespace inserted around punctuation,
-        and newline collapse. This helper tries an exact match first and
-        falls back to a regex that tolerates those transformations.
-
-        Args:
-            doc_text: Text of the spaCy Doc (post-normalization).
-            line_text: Original line text from the txtdown parser, with
-                blockquote markers already stripped.
-            start_pos: Char offset to begin the search at.
-
-        Returns:
-            ``(start, end)`` char positions in ``doc_text`` covering the
-            matched text, or ``(-1, -1)`` if no match is found. Note that
-            ``end - start`` may exceed ``len(line_text)`` because the doc
-            text may contain extra whitespace inside the matched span.
+        Delegates to ``latincyreaders.utils.text_utils.find_line_in_doc_text``,
+        which tolerates J/I and V/U normalization as well as whitespace
+        variations introduced by the LatinCy NLP pipeline.
         """
-        line_text = line_text.strip()
-        if not line_text:
-            return -1, -1
-
-        # Fast path: exact match works when no normalization applied.
-        pos = doc_text.find(line_text, start_pos)
-        if pos >= 0:
-            return pos, pos + len(line_text)
-
-        pattern_parts: list[str] = []
-        prev_was_space = True
-        for ch in line_text:
-            if ch.isspace():
-                if not prev_was_space:
-                    pattern_parts.append(r"\s+")
-                prev_was_space = True
-                continue
-            if ch in "ji":
-                pattern_parts.append("[ji]")
-            elif ch in "JI":
-                pattern_parts.append("[JI]")
-            elif ch in "vu":
-                pattern_parts.append("[vu]")
-            elif ch in "VU":
-                pattern_parts.append("[VU]")
-            elif ch.isalnum():
-                pattern_parts.append(re.escape(ch))
-            else:
-                # Tokenization may insert whitespace before punctuation.
-                pattern_parts.append(r"\s*" + re.escape(ch))
-            prev_was_space = False
-
-        pattern = "".join(pattern_parts)
-        match = re.search(pattern, doc_text[start_pos:])
-        if match:
-            return start_pos + match.start(), start_pos + match.end()
-        return -1, -1
+        return _find_line_in_doc_text(doc_text, line_text, start_pos)
 
     def _parse_file(self, path: Path) -> Iterator[tuple[str, dict]]:
         """Parse a txtdown file into text with metadata.
