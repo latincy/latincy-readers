@@ -111,22 +111,20 @@ class PTAReader(DownloadableCorpusMixin, TEIReader):
 
     def __init__(
         self,
-        root: str | Path | None = None,
+        root: str | Path,
         fileids: str | None = None,
         encoding: str = "utf-8",
         annotation_level: AnnotationLevel = AnnotationLevel.FULL,
         remove_notes: bool = True,
         cache: bool = False,
         cache_maxsize: int = 128,
-        auto_download: bool = False,
         **kwargs,
     ):
         """Initialize the PTA reader.
 
         Args:
-            root: Root directory containing PTA XML files. If None, uses the
-                default location (``~/latincy_data/pta_data``), downloading
-                automatically when ``auto_download=True``.
+            root: Root directory containing PTA XML files (required).
+                Clone from CORPUS_URL or call PTAReader.download() first.
             fileids: Glob pattern for selecting files.
             encoding: Text encoding.
             annotation_level: NLP annotation level.
@@ -134,11 +132,8 @@ class PTAReader(DownloadableCorpusMixin, TEIReader):
             cache: If False (default), disable LRU caching so that per-section
                 chunking works correctly across repeated iterations.
             cache_maxsize: Maximum number of documents to cache.
-            auto_download: If True and root is None, auto-download corpus.
             **kwargs: Additional arguments passed to TEIReader.
         """
-        if root is None:
-            root = self._get_default_root(auto_download)
         super().__init__(
             root=root,
             fileids=fileids,
