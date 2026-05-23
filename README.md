@@ -77,6 +77,7 @@ for text in reader.texts():
 | `CSELReader` | `.xml` | No | Corpus Scriptorum Ecclesiasticorum Latinorum |
 | `FormulaeReader` | `.xml` | No | Formulae-Litterae-Chartae medieval charters |
 | `EpistolaeReader` | `.html.md` | No | Epistolae medieval women's Latin letters |
+| `EDHReader` | `.xml` | Yes (prompt) | Epigraphic Database Heidelberg inscriptions |
 | `TxtdownReader` | `.txtd` | No | Txtdown format with citations |
 | `UDReader` | `.conllu` | No | Universal Dependencies CoNLL-U |
 | `LatinUDReader` | `.conllu` | Yes | All 6 Latin UD treebanks |
@@ -272,6 +273,116 @@ for citation, text in reader.chapters(as_text=True):
 | `filename` | `stoa0040.stoa001.opp-lat1.xml` | Source filename |
 
 **Chapter spans** (`doc.spans["chapters"]`): each Span carries `span._.citation` in the form `"book N, section N"`.
+
+**License:** CC-BY-SA 4.0.
+
+### Formulae-Litterae-Chartae (FormulaeReader)
+
+Read TEI-XML files from the [Formulae-Litterae-Chartae](https://github.com/Formulae-Litterae-Chartae/formulae-open) project (University of Hamburg). The corpus covers early medieval Latin charters and formularies (500–1000 CE), with text stored as `<w>` (word) elements.
+
+File pattern `**/*.lat*.xml` naturally excludes `__capitains__.xml` catalog files. French regest (`<front>`) is excluded; only the Latin `<div type="edition">` is extracted.
+
+```python
+from latincyreaders import FormulaeReader
+
+reader = FormulaeReader("/path/to/formulae-open")
+
+# Iterate over charters
+for text in reader.texts():
+    print(text[:100])
+
+# Metadata per charter
+for h in reader.headers():
+    print(h["collection"], h["cts_urn"], h["date"])
+```
+
+**Metadata per Doc:**
+
+| Key | Example | Description |
+|-----|---------|-------------|
+| `cts_urn` | `urn:cts:formulae:redon.courson0001.lat001` | CTS URN |
+| `collection` | `redon` | Collection prefix from URN |
+| `title` | `Cartulaire de Redon` | Document title |
+| `date` | `832` | Date from `<dateline>` (leading zeros stripped) |
+| `filename` | `redon.courson0001.lat001.xml` | Source filename |
+
+**License:** CC-BY 4.0.
+
+### Epistolae (EpistolaeReader)
+
+Read Hugo Markdown (`.html.md`) files from the [Epistolae](https://github.com/ccnmtl/epistolae-hugo) project (Columbia University / University of Siena). The corpus contains ~1,100 medieval Latin letters by and to women (4th–13th century).
+
+Only the `"Original letter:"` section is extracted; English translation, historical context, and scholarly apparatus are excluded. HTML tags within the Markdown are stripped.
+
+```python
+from latincyreaders import EpistolaeReader
+
+reader = EpistolaeReader("/path/to/epistolae-hugo/content/letter")
+
+# Latin text only
+for text in reader.texts():
+    print(text[:100])
+
+# Letter metadata
+for h in reader.headers():
+    print(h["letter_id"], h["senders"], h["date"])
+```
+
+**Metadata per Doc:**
+
+| Key | Example | Description |
+|-----|---------|-------------|
+| `letter_id` | `1` | Numeric letter ID from frontmatter |
+| `title` | `Letter from Perpetua` | Letter title |
+| `date` | `203` | Date from `ltr_date` field |
+| `senders` | `["Perpetua"]` | List of sender names |
+| `receivers` | `["Tertullian"]` | List of receiver names |
+| `filename` | `1.html.md` | Source filename |
+
+**License:** CC-BY-NC-SA 4.0.
+
+### Epigraphic Database Heidelberg (EDHReader)
+
+Read EpiDoc TEI-XML files from the [Epigraphic Database Heidelberg](https://github.com/epigraphic-database-heidelberg/data). The corpus contains ~82,000 Latin (and Greek) inscriptions from across the Roman Empire, encoded with full Leiden-convention markup.
+
+Only files containing `<div type="edition" xml:lang="la">` are processed; Greek-only inscriptions are silently skipped. Abbreviations are expanded (`D(is)` → `Dis`), editor restorations are included, and erasures (`<del>`) are dropped.
+
+```python
+from latincyreaders import EDHReader
+
+# Point at the cloned data repo
+reader = EDHReader("/path/to/edh-data")
+
+# Iterate Latin inscriptions as plain text
+for text in reader.texts():
+    print(text)
+
+# Full NLP with line citations
+for doc in reader.docs():
+    meta = doc._.metadata
+    print(f"{meta['hd_nr']} ({meta['not_before']}–{meta['not_after']} CE)")
+    for line in doc.spans["lines"]:
+        print(f"  {line._.citation}: {line.text}")
+
+# Fast metadata scan (no NLP)
+for h in reader.headers():
+    print(h["hd_nr"], h["province"], h["type_of_inscription"])
+```
+
+**Metadata per Doc:**
+
+| Key | Example | Description |
+|-----|---------|-------------|
+| `hd_nr` | `HD000001` | EDH inscription identifier |
+| `not_before` | `71` | Earliest date CE (negative = BCE) |
+| `not_after` | `130` | Latest date CE |
+| `province` | `Latium et Campania (Regio I)` | Roman province |
+| `type_of_inscription` | `epitaph` | Inscription type |
+| `filename` | `HD000001.xml` | Source filename |
+
+**Line spans** (`doc.spans["lines"]`): each Span carries `span._.citation` in the form `"HD000001.N"` (inscription ID + line number).
+
+**Auto-download:** `EDHReader(auto_download=True)` will prompt to clone from GitHub on first use. The repo is ~500 MB; a `--depth 1` clone is used.
 
 **License:** CC-BY-SA 4.0.
 
