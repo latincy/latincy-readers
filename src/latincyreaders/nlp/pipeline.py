@@ -87,8 +87,13 @@ def mark_newlines_from_spans(doc: "Doc") -> None:
 
     After this call, ``"".join(t._.text_with_nl for t in doc)`` reconstructs
     the original line-structured text.
+
+    Only marks the last token of spans[:-1] (all-but-last), matching the
+    semantics of ``str.splitlines(keepends=True)``: no spurious trailing \\n
+    is appended to the final line.
     """
-    for span in doc.spans.get("lines", []):
+    spans = doc.spans.get("lines", [])
+    for span in spans[:-1]:  # all-but-last: last line has no trailing \n
         if span:
             span[-1]._.newline_after = True
 
