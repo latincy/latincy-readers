@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-05-28
+
+### Added
+
+- **Text-critical markup support in `TxtdownReader`** — all standard West (1973)
+  apparatus conventions are now stripped before NLP and recorded in a new
+  `doc._.textcrit` dict:
+  - Cruxes `†text†` → text preserved, `Token._.is_crux = True`
+  - Editorial additions `<text>` → text preserved, `Token._.is_addition = True`
+  - Expansions `M(arcus)` → `Marcus`, `Token._.is_expansion = True`
+  - Deletions `{spurious}` → stripped entirely (recorded in `textcrit["deletions"]` with original and text, no token span)
+  - Lacunae `[text]` → left as-is (NLP processes as-found)
+- **`doc._.textcrit`** — new Doc-level dict on all Docs produced by `TxtdownReader`:
+  `{"cruxes": [...], "additions": [...], "expansions": [...], "deletions": [...]}`
+  Each non-deletion entry carries `original`, `text`, and `span` (token index tuple).
+- **`Token._.is_crux`**, **`Token._.is_addition`**, **`Token._.is_expansion`** —
+  new boolean token extensions, registered globally for all readers.
+- **`Token._.newline_after`** — `True` on the last token of each source line;
+  set by `mark_newlines_from_spans()` after line spans are built.
+- **`Token._.text_with_nl`** — getter returning `token.text + "\n"` or
+  `token.whitespace_`; `"".join(t._.text_with_nl for t in doc)` reconstructs
+  line-structured source text.
+- **`latincyreaders.utils.text_utils.find_line_in_doc_text()`** — shared utility
+  for NLP-tolerant line-to-Doc alignment (handles J/I, V/U normalization and
+  whitespace inserted around punctuation by LatinCy).
+
+### Changed
+
+- **`CamenaReader.root` is now a required argument.** The `auto_download`
+  parameter and its fallback pathway have been removed from the public API.
+  `CORPUS_URL` and `download()` remain available for manual corpus setup.
+  Pass an explicit `root=` path (or set `CAMENA_ROOT`) to construct the reader.
+
+### Fixed
+
+- `mark_newlines_from_spans()` no longer appends a spurious trailing `\n` after
+  the final line span, matching `str.splitlines(keepends=True)` semantics.
+- Single-line sections in `TxtdownReader` no longer have their line citation
+  silently overwritten by the section citation. (spaCy stores span extension
+  values keyed by token range; when a section and its only line share the same
+  range, the last write wins — line citations are now re-applied after all
+  section spans are set.)
+
 ## [1.5.0] - 2026-04-27
 
 ### Added
