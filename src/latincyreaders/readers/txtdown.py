@@ -28,6 +28,30 @@ except ImportError:
 
 # Pattern to strip blockquote markers: leading whitespace, one or more >, optional space
 _BLOCKQUOTE_PREFIX = re.compile(r"^\s*>+\s?")
+# Text-critical markup patterns (West 1973)
+_CRUX_PATTERN = re.compile(r"†([^†]*)†")   # crux: keep text, strip daggers
+_ADDITION_PATTERN = re.compile(r"<([^<>]*)>")              # addition: keep text, strip <>
+_DELETION_PATTERN = re.compile(r"\{[^}]*\}")               # deletion {}: strip markers AND content
+_EXPANSION_PATTERN = re.compile(r"(\w+)\((\w+)\)")         # expansion M(arcus) → Marcus
+
+
+def _collect_markup(text: str) -> list[tuple]:
+    """Find all text-critical markup occurrences in *text* before stripping.
+
+    Returns a list of (source_start, source_end, type, original, replacement)
+    sorted by position, where *replacement* is the string that will replace
+    *original* after stripping (empty string for deletions).
+    """
+    spans: list[tuple] = []
+    for m in _DELETION_PATTERN.finditer(text):
+        spans.append((m.start(), m.end(), "deletion", m.group(0), ""))
+    for m in _EXPANSION_PATTERN.finditer(text):
+        spans.append((m.start(), m.end(), "expansion", m.group(0), m.group(1) + m.group(2)))
+    for m in _CRUX_PATTERN.finditer(text):
+        spans.append((m.start(), m.end(), "crux", m.group(0), m.group(1)))
+    for m in _ADDITION_PATTERN.finditer(text):
+        spans.append((m.start(), m.end(), "addition", m.group(0), m.group(1)))
+    return sorted(spans, key=lambda x: x[0])
 
 
 class TxtdownReader(BaseCorpusReader):
@@ -87,41 +111,32 @@ class TxtdownReader(BaseCorpusReader):
         """Default glob pattern for txtdown files."""
         return "**/*.txtd"
 
-    def _normalize_text(self, text: str) -> str:
-        """Normalize text, stripping blockquote markers and joining continuations.
+    def _normalize_pre_markup(self, text: str) -> str:
+        """Apply unicode normalization and blockquote joining, leaving markup in place.
 
-        Blockquotes (lines starting with >) are joined with the preceding
-        text to form continuous sentences for NLP processing.
-
-        Example:
-            "Nonne uidit Aeneas Priamum per aras\\n\\n> Sanguine foedantem..."
-            becomes:
-            "Nonne uidit Aeneas Priamum per aras Sanguine foedantem..."
+        This is the first half of normalization. Call _strip_critical_markup()
+        afterwards for fully clean NLP-ready text, or collect markup positions
+        first via _collect_markup() before stripping.
 
         Args:
-            text: Raw text with possible blockquote markers.
+            text: Raw text with possible blockquote markers and critical markup.
 
         Returns:
-            Text with blockquotes stripped and joined as continuations.
+            Text with blockquotes resolved but critical markup (†, <>, {}, ())
+            still intact.
         """
         import unicodedata
 
-        # First do unicode normalization (from base class)
         text = unicodedata.normalize("NFC", text)
 
-        # Process lines to handle blockquotes
         lines = text.split("\n")
         result_lines: list[str] = []
 
         for line in lines:
-            # Check if this is a blockquote line
             if line.lstrip().startswith(">"):
-                # Strip the > prefix and leading whitespace after it
                 stripped = _BLOCKQUOTE_PREFIX.sub("", line)
                 if stripped:
-                    # Join with previous line if there is one
                     if result_lines:
-                        # Remove trailing whitespace from previous line and join
                         prev = result_lines[-1].rstrip()
                         result_lines[-1] = prev + " " + stripped
                     else:
@@ -130,6 +145,36 @@ class TxtdownReader(BaseCorpusReader):
                 result_lines.append(line)
 
         return "\n".join(result_lines)
+
+    def _normalize_text(self, text: str) -> str:
+        """Full normalization for texts(): blockquotes + all critical markup stripped.
+
+        Args:
+            text: Raw text.
+
+        Returns:
+            NLP-ready text with all markup removed.
+        """
+        return self._strip_critical_markup(self._normalize_pre_markup(text))
+
+    @staticmethod
+    def _strip_critical_markup(text: str) -> str:
+        """Strip text-critical markup, preserving the enclosed text.
+
+        Handles cruxes (†text†) and editorial additions (<text>).
+        The enclosed text is kept; only the markers are removed.
+
+        Args:
+            text: Text possibly containing critical markup.
+
+        Returns:
+            Text with markup markers removed.
+        """
+        text = _DELETION_PATTERN.sub("", text)           # {spurious} → gone
+        text = _EXPANSION_PATTERN.sub(r"\1\2", text)    # M(arcus) → Marcus
+        text = _CRUX_PATTERN.sub(r"\1", text)            # †text† → text
+        text = _ADDITION_PATTERN.sub(r"\1", text)        # <text> → text
+        return text
 
     @staticmethod
     def _strip_blockquote_marker(text: str) -> str:
@@ -285,15 +330,72 @@ class TxtdownReader(BaseCorpusReader):
             fileid = str(path.relative_to(self._root))
 
             for text, metadata in self._parse_file(path):
-                text = self._normalize_text(text)
-                doc = nlp(text)
+                text = self._normalize_pre_markup(text)
+                markup_data = _collect_markup(text)
+                clean_text = self._strip_critical_markup(text)
+                doc = nlp(clean_text)
                 doc._.fileid = fileid
                 doc._.metadata = metadata
 
-                # Add citation spans
                 self._add_citation_spans(doc, metadata)
+                self._apply_textcrit(doc, markup_data)
 
                 yield doc
+
+    def _apply_textcrit(self, doc: "Doc", markup_data: list[tuple]) -> None:
+        """Populate doc._.textcrit and set per-token text-critical flags.
+
+        Uses the markup positions collected before stripping to compute
+        where each occurrence lands in the NLP-processed doc, then sets
+        Token._.is_crux / is_addition / is_expansion accordingly.
+
+        Deletions ({}) have no tokens in the Doc; they are recorded in
+        doc._.textcrit["deletions"] without a span key.
+
+        Args:
+            doc: The spaCy Doc built from the stripped clean text.
+            markup_data: Output of _collect_markup() — list of
+                (source_start, source_end, type, original, replacement)
+                sorted by source position.
+        """
+        textcrit: dict[str, list] = {
+            "cruxes": [], "additions": [], "expansions": [], "deletions": [],
+        }
+        offset = 0
+
+        for source_start, source_end, mtype, original, replacement in markup_data:
+            clean_start = source_start - offset
+
+            if mtype == "deletion":
+                textcrit["deletions"].append({
+                    "original": original,
+                    "text": original[1:-1],  # strip enclosing { }
+                })
+            else:
+                clean_end = clean_start + len(replacement)
+                span = doc.char_span(clean_start, clean_end, alignment_mode="expand")
+                token_span = (span.start, span.end) if span else None
+                entry = {"original": original, "text": replacement, "span": token_span}
+
+                if mtype == "crux":
+                    textcrit["cruxes"].append(entry)
+                    if span:
+                        for token in span:
+                            token._.is_crux = True
+                elif mtype == "addition":
+                    textcrit["additions"].append(entry)
+                    if span:
+                        for token in span:
+                            token._.is_addition = True
+                elif mtype == "expansion":
+                    textcrit["expansions"].append(entry)
+                    if span:
+                        for token in span:
+                            token._.is_expansion = True
+
+            offset += len(original) - len(replacement)
+
+        doc._.textcrit = textcrit
 
     def _add_citation_spans(self, doc: "Doc", metadata: dict) -> None:
         """Add section and line spans with citation info to the Doc."""
@@ -305,6 +407,13 @@ class TxtdownReader(BaseCorpusReader):
 
         section_spans = []
         line_spans = []
+        # Parallel list of (citation, metadata) for re-applying after section
+        # spans are created. spaCy stores span extension values keyed by
+        # (start, end) token range, not Python object identity. When a line
+        # span and a section span share the same token range (single-line
+        # sections), setting the section citation overwrites the line citation.
+        # Re-applying line citations last ensures they win.
+        line_span_annotations: list[tuple] = []
 
         # Track character position through the document
         char_pos = 0
@@ -318,11 +427,11 @@ class TxtdownReader(BaseCorpusReader):
                 line_text = line_info["text"]
                 line_num = line_info["number"]
 
-                # Strip blockquote markers before searching in normalized doc text.
-                # The txtdown parser stores raw line text (including > prefix),
-                # but _normalize_text strips markers and joins blockquote content
-                # with the preceding line. We must search for the cleaned text.
+                # Strip blockquote markers and text-critical markup before
+                # searching in normalized doc text, which has already had
+                # these stripped by _normalize_text.
                 line_text_stripped = self._strip_blockquote_marker(line_text)
+                line_text_stripped = self._strip_critical_markup(line_text_stripped)
                 if not line_text_stripped:
                     line_text_stripped = line_text.strip()
                 line_start, line_end = self._find_line_in_doc_text(
@@ -334,13 +443,15 @@ class TxtdownReader(BaseCorpusReader):
 
                     if span:
                         citation = f"{section_id}.{line_num}"
-                        span._.citation = citation
-                        span._.metadata = {
+                        line_meta = {
                             "section_id": section_id,
                             "section_title": section_title,
                             "line_number": line_num,
                         }
+                        span._.citation = citation
+                        span._.metadata = line_meta
                         line_spans.append(span)
+                        line_span_annotations.append((span, citation, line_meta))
 
                     char_pos = line_end
 
@@ -363,6 +474,13 @@ class TxtdownReader(BaseCorpusReader):
             # assuming a fixed offset.
             while char_pos < len(doc.text) and doc.text[char_pos] in ' \n\t\r':
                 char_pos += 1
+
+        # Re-apply line span citations after all section spans have been set,
+        # so line citations win over any section citation that may share the
+        # same token range (single-line sections).
+        for span, citation, span_meta in line_span_annotations:
+            span._.citation = citation
+            span._.metadata = span_meta
 
         doc.spans["sections"] = section_spans
         doc.spans["lines"] = line_spans
