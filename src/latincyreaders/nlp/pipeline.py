@@ -73,6 +73,14 @@ def _register_extensions() -> None:
     # Set by mark_newlines_from_spans() after line spans are built.
     # In la_core_web_lg the tokenizer collapses \n → space, so this is the only
     # reliable way to recover newline positions post-NLP.
+    if not Doc.has_extension("textcrit"):
+        Doc.set_extension("textcrit", default=None)
+
+    if not Token.has_extension("is_crux"):
+        Token.set_extension("is_crux", default=False)
+        Token.set_extension("is_addition", default=False)
+        Token.set_extension("is_expansion", default=False)
+
     if not Token.has_extension("newline_after"):
         Token.set_extension("newline_after", default=False)
 
