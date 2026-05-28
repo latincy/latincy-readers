@@ -6,7 +6,7 @@
 
 Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) NLP integration.
 
-Version 1.5.0; Python 3.10+; LatinCy 3.9.0+
+Version 1.6.0; Python 3.10+; LatinCy 3.9.0+
 
 ## Installation
 
@@ -71,7 +71,7 @@ for text in reader.texts():
 | `LatinLibraryReader` | `.txt` | Yes | Latin Library corpus |
 | `TEIReader` | `.xml` | No | TEI-XML documents |
 | `PerseusReader` | `.xml` | No | Perseus Digital Library TEI |
-| `CamenaReader` | `.xml` | Yes | CAMENA Neo-Latin corpus |
+| `CamenaReader` | `.xml` | No (root required) | CAMENA Neo-Latin corpus |
 | `DigilibLTReader` | `.xml` | No | digilibLT Late-Antique Latin TEI corpus |
 | `TxtdownReader` | `.txtd` | No | Txtdown format with citations |
 | `UDReader` | `.conllu` | No | Universal Dependencies CoNLL-U |
@@ -79,7 +79,7 @@ for text in reader.texts():
 
 ### Auto-Download
 
-Readers with auto-download support will automatically fetch the corpus on first use:
+Readers with auto-download support (`TesseraeReader`, `GreekTesseraeReader`, `LatinLibraryReader`, `LatinUDReader`) will automatically fetch the corpus on first use:
 
 ```python
 # Downloads to ~/latincy_data/lat_text_tesserae/texts if not found
@@ -95,6 +95,8 @@ reader = TesseraeReader()
 # Manual download to specific location
 TesseraeReader.download("/path/to/destination")
 ```
+
+**Note:** `CamenaReader` requires an explicit `root=` path — auto-download has been removed from its public API. Clone the corpus from `CamenaReader.CORPUS_URL` or call `CamenaReader.download("/path")` manually, then pass the path as `root`.
 
 ### Ancient Greek (GreekTesseraeReader)
 
@@ -187,6 +189,56 @@ for doc in reader.docs():
 **Text-critical symbols.** With `use_symbols=True` (default), the reader strips editorial marks before NLP processing — `<supplied>` → `supplied`, `[secluded]` removed, `{corrected}` → `corrected`, `†crux†` → `crux`, `***` lacuna markers removed, and `M(arcus)` → `Marcus` abbreviation expansion. Set `use_symbols=False` to preserve the marks verbatim.
 
 **License:** digilibLT texts are released under CC BY-NC-SA.
+
+### Txtdown (TxtdownReader)
+
+Read `.txtd` files — a minimal markup format for Latin text collections with YAML front matter, section separators, and automatic line numbering. Designed for critical editions and scholarly texts.
+
+```python
+from latincyreaders import TxtdownReader
+
+reader = TxtdownReader("/path/to/texts")
+
+# Sentences with full citation metadata
+for sent in reader.sents_with_citations():
+    print(f"{sent['section_id']}.{sent['line_citations']}: {sent['sentence']}")
+
+# Line and section spans on the Doc
+for doc in reader.docs():
+    for line in doc.spans["lines"]:
+        print(f"{line._.citation}: {line.text}")
+```
+
+**Text-critical markup (West 1973).** All standard apparatus conventions are stripped before NLP and recorded in `doc._.textcrit`:
+
+| Markup | Treatment | Token flag |
+|--------|-----------|------------|
+| `†text†` crux | daggers stripped, text kept | `Token._.is_crux` |
+| `<text>` addition | brackets stripped, text kept | `Token._.is_addition` |
+| `M(arcus)` expansion | collapsed to `Marcus` | `Token._.is_expansion` |
+| `{text}` deletion | stripped entirely | recorded in `textcrit["deletions"]` |
+| `[text]` lacuna | left as-is | — |
+
+```python
+doc = next(reader.docs())
+
+# Inspect all text-critical events in the document
+print(doc._.textcrit)
+# {'cruxes': [{'original': '†protulerant†', 'text': 'protulerant', 'span': (12, 13)}],
+#  'additions': [...], 'expansions': [...], 'deletions': [...]}
+
+# Token-level flags
+for token in doc:
+    if token._.is_crux:
+        print(f"Crux: {token.text} (originally {token._.textcrit})")
+```
+
+**Newline recovery.** After NLP (which collapses `\n` to spaces), line boundaries are preserved via `Token._.newline_after` and `Token._.text_with_nl`:
+
+```python
+# Reconstruct line-structured text from the Doc
+reconstructed = "".join(t._.text_with_nl for t in doc)
+```
 
 ## Core API
 
@@ -420,7 +472,7 @@ if not result.is_valid:
 - [CAMENA Neo-Latin](https://github.com/nevenjovanovic/camena-neolatinlit)
 - [digilibLT](http://digiliblt.uniupo.it) (Digital Library of Late-Antique Latin Texts)
 - [Universal Dependencies Latin Treebanks](https://universaldependencies.org/) (PROIEL, Perseus, ITTB, LLCT, UDante, CIRCSE)
-- Any plaintext, TEI-XML, or CoNLL-U collection
+- Any plaintext, TEI-XML, CoNLL-U, or `.txtd` collection
 
 ## CLI Tools
 
