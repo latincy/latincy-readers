@@ -69,7 +69,7 @@ class CamenaCorpusReader(DownloadableCorpusMixin, TEIReader):
         annotation_level: AnnotationLevel = AnnotationLevel.FULL,
         include_front: bool = True,
         remove_notes: bool = True,
-        auto_download: bool = True,
+        auto_download: bool = False,
         cache: bool = True,
         cache_maxsize: int = 128,
         **kwargs,
