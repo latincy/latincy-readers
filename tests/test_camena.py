@@ -16,7 +16,6 @@ class TestCamenaReader:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
-            auto_download=False,
         )
 
     @pytest.fixture
@@ -27,7 +26,6 @@ class TestCamenaReader:
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
             include_front=True,
-            auto_download=False,
         )
 
     @pytest.fixture
@@ -38,7 +36,6 @@ class TestCamenaReader:
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
             include_front=False,
-            auto_download=False,
         )
 
     # -------------------------------------------------------------------------
@@ -148,7 +145,6 @@ class TestCamenaReader:
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
             remove_notes=False,
-            auto_download=False,
         )
         # Just verify the reader works with remove_notes=False
         texts = list(reader.texts())
@@ -164,7 +160,6 @@ class TestCamenaReader:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.NONE,
-            auto_download=False,
         )
         with pytest.raises(ValueError, match="annotation_level=NONE"):
             next(reader.docs())
@@ -175,7 +170,6 @@ class TestCamenaReader:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.NONE,
-            auto_download=False,
         )
         texts = list(reader.texts())
         assert len(texts) > 0
@@ -194,7 +188,6 @@ class TestCamenaEdgeCases:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
-            auto_download=False,
         )
         texts = list(reader.texts())
         # Should handle gracefully (empty or no output)
@@ -214,7 +207,6 @@ class TestCamenaEdgeCases:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
-            auto_download=False,
         )
         texts = list(reader.texts())
         assert isinstance(texts, list)
@@ -238,7 +230,6 @@ class TestCamenaEdgeCases:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
-            auto_download=False,
         )
         texts = list(reader.texts())
         assert len(texts) > 0
@@ -263,7 +254,6 @@ class TestCamenaEdgeCases:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
-            auto_download=False,
         )
         texts = list(reader.texts())
         assert len(texts) > 0
@@ -281,7 +271,6 @@ class TestCamenaCollections:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
-            auto_download=False,
         )
 
     def test_collections_returns_list(self, reader):
@@ -306,7 +295,6 @@ class TestCamenaCollections:
             root=camena_dir,
             fileids="**/*.xml",
             annotation_level=AnnotationLevel.BASIC,
-            auto_download=False,
         )
         docs = list(reader.docs_by_collection("poemata"))
         assert len(docs) == 1
@@ -338,7 +326,6 @@ class TestCamenaHeaderMetadata:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
-            auto_download=False,
         )
         doc = next(reader.docs())
         assert doc._.metadata.get("date") == "1650"
@@ -355,7 +342,6 @@ class TestCamenaCaching:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
-            auto_download=False,
             cache=True,
         )
         fileid = reader.fileids()[0]
@@ -383,7 +369,6 @@ class TestCamenaCaching:
             root=camena_dir,
             fileids="*.xml",
             annotation_level=AnnotationLevel.BASIC,
-            auto_download=False,
             cache=True,
             cache_maxsize=2,
         )
@@ -407,13 +392,13 @@ class TestCamenaCaching:
 
 
 class TestCamenaDownload:
-    """Tests for CAMENA download functionality."""
+    """Tests for CAMENA corpus path requirements."""
 
-    def test_missing_root_with_auto_download_false(self, tmp_path, monkeypatch):
-        """Missing default root raises FileNotFoundError when auto_download=False."""
-        # Point env var to nonexistent path
-        nonexistent = tmp_path / "nonexistent"
-        monkeypatch.setenv("CAMENA_ROOT", str(nonexistent))
+    def test_root_is_required(self):
+        """root is a required argument; omitting it raises TypeError."""
+        with pytest.raises(TypeError):
+            CamenaReader()  # type: ignore[call-arg]
 
-        with pytest.raises(FileNotFoundError, match="corpus not found"):
-            CamenaReader(auto_download=False)
+    def test_corpus_url_is_documented(self):
+        """CORPUS_URL class attribute records the source for manual cloning."""
+        assert "camena" in CamenaReader.CORPUS_URL.lower()

@@ -63,13 +63,12 @@ class CamenaCorpusReader(DownloadableCorpusMixin, TEIReader):
 
     def __init__(
         self,
-        root: str | Path | None = None,
+        root: str | Path,
         fileids: str | None = None,
         encoding: str = "utf-8",
         annotation_level: AnnotationLevel = AnnotationLevel.FULL,
         include_front: bool = True,
         remove_notes: bool = True,
-        auto_download: bool = False,
         cache: bool = True,
         cache_maxsize: int = 128,
         **kwargs,
@@ -77,19 +76,17 @@ class CamenaCorpusReader(DownloadableCorpusMixin, TEIReader):
         """Initialize the CAMENA reader.
 
         Args:
-            root: Root directory. If None, uses CAMENA_ROOT env var or default.
+            root: Root directory containing CAMENA XML files (required).
+                Clone from CORPUS_URL or call CamenaReader.download() first.
             fileids: Glob pattern for selecting files.
             encoding: Text encoding.
             annotation_level: NLP annotation level.
             include_front: If True, include front matter (prefaces, dedications).
             remove_notes: Whether to remove <note> elements.
-            auto_download: If True and corpus not found, prompt to download.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
             **kwargs: Additional arguments passed to BaseCorpusReader (e.g., backend).
         """
-        if root is None:
-            root = self._get_default_root(auto_download)
 
         # CAMENA doesn't use namespaces consistently
         super().__init__(
