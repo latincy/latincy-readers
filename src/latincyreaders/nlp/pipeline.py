@@ -41,6 +41,16 @@ class AnnotationLevel(Enum):
 BACKBONE_COMPONENTS = {"tok2vec", "transformer", "senter"}
 
 
+# Getter for the text_with_nl extension. Defined at module level (not as a
+# local lambda inside _register_extensions) so it is picklable by qualified
+# name: spaCy serialises extension getters when shipping a pipeline to worker
+# processes under nlp.pipe(n_process>1) (spawn start method, e.g. on macOS).
+# A local lambda raises "Can't pickle local object
+# '_register_extensions.<locals>.<lambda>'" in that path.
+def _get_text_with_nl(t):
+    return t.text + ("\n" if t._.newline_after else t.whitespace_)
+
+
 # Register custom extensions once at module load
 def _register_extensions() -> None:
     """Register spaCy custom extensions for citation tracking."""
@@ -69,10 +79,7 @@ def _register_extensions() -> None:
     # Reconstructs the original whitespace including newlines.
     # "".join(t._.text_with_nl for t in doc) gives back the line-structured source.
     if not Token.has_extension("text_with_nl"):
-        Token.set_extension(
-            "text_with_nl",
-            getter=lambda t: t.text + ("\n" if t._.newline_after else t.whitespace_),
-        )
+        Token.set_extension("text_with_nl", getter=_get_text_with_nl)
 
 
 # Register on import
