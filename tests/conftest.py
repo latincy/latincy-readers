@@ -98,3 +98,9 @@ def epistolae_dir(fixtures_dir) -> Path:
 def edh_dir(fixtures_dir) -> Path:
     """Path to EDH test fixtures."""
     return fixtures_dir / "edh"
+
+
+@pytest.fixture
+def gutenberg_dir(fixtures_dir) -> Path:
+    """Path to Project Gutenberg test fixtures."""
+    return fixtures_dir / "gutenberg"
