@@ -53,6 +53,7 @@ from latincyreaders.core.selector import FileSelector
 from latincyreaders.readers.tesserae import TesseraeReader
 from latincyreaders.readers.greek_tesserae import GreekTesseraeReader
 from latincyreaders.readers.plaintext import PlaintextReader, LatinLibraryReader
+from latincyreaders.readers.gutenberg import ProjectGutenbergReader
 from latincyreaders.readers.tei import TEIReader, PerseusReader
 from latincyreaders.readers.digilibt import DigilibLTReader
 from latincyreaders.readers.pta import PTAReader
@@ -85,6 +86,7 @@ __all__ = [
     "GreekTesseraeReader",
     "PlaintextReader",
     "LatinLibraryReader",
+    "ProjectGutenbergReader",
     "TEIReader",
     "PerseusReader",
     "DigilibLTReader",
