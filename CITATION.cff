@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "LatinCy Readers"
+abstract: "Corpus readers for Latin and Ancient Greek texts with LatinCy/spaCy NLP integration."
+authors:
+  - family-names: Burns
+    given-names: Patrick J.
+    email: patrick@diyclassics.org
+    orcid: "https://orcid.org/0000-0003-2158-866X"
+repository-code: "https://github.com/latincy/latincy-readers"
+url: "https://pypi.org/project/latincy-readers/"
+license: MIT
+version: "1.6.0"
+date-released: "2026-06-08"
+keywords:
+  - latin
+  - ancient-greek
+  - nlp
+  - corpus
+  - spacy
+  - classical-languages
+  - latincy
