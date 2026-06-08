@@ -6,7 +6,7 @@
 
 Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) NLP integration.
 
-Version 1.5.0; Python 3.10+; LatinCy 3.9.0+
+Version 1.6.0; Python 3.10+; LatinCy 3.9.0+
 
 ## Installation
 
@@ -75,10 +75,8 @@ for text in reader.texts():
 | `DigilibLTReader` | `.xml` | No | digilibLT Late-Antique Latin TEI corpus |
 | `PTAReader` | `.xml` | Yes | Patristic Text Archive (Greek & Latin) |
 | `CSELReader` | `.xml` | No | Corpus Scriptorum Ecclesiasticorum Latinorum |
-| `FormulaeReader` | `.xml` | No | Formulae-Litterae-Chartae medieval charters |
-| `EpistolaeReader` | `.html.md` | No | Epistolae medieval women's Latin letters |
-| `EDHReader` | `.xml` | Yes (prompt) | Epigraphic Database Heidelberg inscriptions |
-| `TxtdownReader` | `.txtd` | No | Txtdown format with citations |
+| `ProjectGutenbergReader` | `.txt` | Yes (fetch) | Project Gutenberg plain-text files |
+| `TxtdownReader` | `.txtd` | No | Txtdown format with citations and critical markup |
 | `UDReader` | `.conllu` | No | Universal Dependencies CoNLL-U |
 | `LatinUDReader` | `.conllu` | Yes | All 6 Latin UD treebanks |
 
