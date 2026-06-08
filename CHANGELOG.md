@@ -7,48 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-06-08
+
 ### Added
 
-- **EDHReader** for the [Epigraphic Database Heidelberg](https://github.com/epigraphic-database-heidelberg/data)
-  — reader for ~82,000 Latin (and Greek) inscriptions from across the
-  Roman Empire, CC-BY-SA 4.0
-  - Processes EpiDoc TEI-XML with Leiden-convention markup normalization:
-    abbreviations expanded (`<expan>` → combined form), editor restorations
-    kept (`<supplied>`), erasures dropped (`<del>`), Greek-only files skipped
-  - Line-level citation spans: ``doc.spans["lines"]`` with
-    ``span._.citation = "HD000001.N"``
-  - Metadata per Doc: ``hd_nr``, ``not_before``, ``not_after``, ``province``,
-    ``type_of_inscription`` (leading zeros stripped from dates)
-  - ``headers()`` for zero-NLP metadata iteration
-  - ``auto_download=True`` prompts to clone from GitHub
-  - Shared ``latincyreaders.utils.text_utils.find_line_in_doc_text`` extracted
-    from ``TxtdownReader`` — tolerates J/I, V/U normalization; used by both
-    readers for NLP-aware line-to-span mapping
-
-- **FormulaeReader** for the [Formulae-Litterae-Chartae](https://github.com/Formulae-Litterae-Chartae/formulae-open)
-  project (University of Hamburg) — reader for early medieval Latin charters
-  and formularies (500–1000 CE), CC-BY 4.0
-  - Extracts Latin text from ``<div type="edition" xml:lang="lat">``; French
-    regest (``<front>``) is excluded
-  - Words are encoded as ``<w>`` elements; joined into running prose via
-    ``itertext()``; ``lemmaRef`` attributes silently ignored
-  - Metadata per Doc: ``cts_urn``, ``collection`` (from URN prefix),
-    ``title``, ``date``, ``filename``
-  - File pattern: ``**/*.lat*.xml`` (excludes ``__capitains__.xml``)
-  - ``headers()`` for zero-NLP-overhead metadata iteration
-
-- **EpistolaeReader** for the [Epistolae](https://github.com/ccnmtl/epistolae-hugo)
-  project (Columbia University / University of Siena) — reader for ~1,100
-  medieval Latin letters by and to women, 4th–13th century, CC-BY-NC-SA 4.0
-  - Parses Hugo Markdown (``.html.md``) files; extracts only the Latin
-    ``"Original letter:"`` section, discarding English translation,
-    historical context, and scholarly apparatus
-  - YAML frontmatter metadata: ``letter_id``, ``senders``, ``receivers``,
-    ``date``, ``title``
-  - ``headers()`` for zero-NLP-overhead frontmatter scanning
+- **ProjectGutenbergReader** — fetch plain-text files from Project Gutenberg
+  by numeric ID, cache to disk, strip standard PG boilerplate (START/END markers),
+  and expose the full corpus-reader interface
+  - `model_name` and `lang` are explicit constructor params so the same reader
+    works for Latin (`la_core_web_lg`) and English (`en_core_web_sm`) without
+    subclassing
+  - Caches to `~/.latincy_cache/gutenberg/` by default; subsequent reads are instant
+  - Metadata per Doc: `pg_id`, `filename`, `path`
 
 - **CSELReader** for the [Corpus Scriptorum Ecclesiasticorum Latinorum](https://github.com/OpenGreekAndLatin/csel-dev)
-  — chapter-aware reader for the CSEL digital edition (Open Greek and Latin Project)
+  — chapter-aware reader for the CSEL digital edition (Open Greek and Latin Project),
+  CC-BY-SA 4.0
   - Handles the two-level `book`/`section` textpart hierarchy; each
     `<div subtype="section">` becomes a span in `doc.spans["chapters"]`
   - Citations follow the form `"book 1, section 3"` (uses `subtype=` attribute)
@@ -57,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `<note>` elements stripped from body text by default
   - `headers()` and `chapters(as_text=True)` for zero-NLP-overhead iteration
   - File pattern: `**/*.opp-lat1.xml`
-  - License: CC-BY-SA 4.0
 
 - **PTAReader** for the [Patristic Text Archive](https://pta.bbaw.de) (PTA)
   — section-aware reader for ~210 Greek texts (~2.3M tokens) and Latin texts,
@@ -69,6 +42,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `~/latincy_data/pta_data` or `$PTA_PATH`)
   - `<note>` elements stripped from body text by default
   - Language detection from `xml:lang` attribute with filename-suffix fallback
+
+- **Text-critical markup support for TxtdownReader** (West 1973 conventions)
+  - Cruxes (`†text†`), additions (`<text>`), expansions (`M(arcus)` → `Marcus`),
+    deletions (`{text}`), and lacunae (`[text]`) handled before NLP
+  - Token extensions: `Token._.is_crux`, `Token._.is_addition`, `Token._.is_expansion`
+  - `doc._.textcrit` records all occurrences with original form and clean text
+  - `TxtdownReader._strip_critical_markup()` available as a static method
+
+- **`Token._.newline_after`** extension — tracks verse line boundaries lost
+  after LatinCy tokenization; populated by `mark_newlines_from_spans()`
+
+- **`latincyreaders.utils.text_utils.find_line_in_doc_text`** — shared utility
+  for NLP-normalization-tolerant line-to-span matching (J/I, V/U, whitespace)
+
+### Fixed
+
+- `mark_newlines_from_spans()`: skip final span (no spurious trailing newline);
+  `list()` SpanGroup before slicing to avoid index errors
+- Unpicklable extension getter under `nlp.pipe(n_process>1)` — lambda replaced
+  with a named function so the getter survives multiprocessing serialization
+- `auto_download` parameter removed from `CamenaReader` and `PTAReader` public
+  API (never functional; silently ignored)
 
 ## [1.5.0] - 2026-04-27
 

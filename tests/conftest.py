@@ -83,24 +83,6 @@ def csel_dir(fixtures_dir) -> Path:
 
 
 @pytest.fixture
-def formulae_dir(fixtures_dir) -> Path:
-    """Path to Formulae-Litterae-Chartae test fixtures."""
-    return fixtures_dir / "formulae"
-
-
-@pytest.fixture
-def epistolae_dir(fixtures_dir) -> Path:
-    """Path to Epistolae test fixtures."""
-    return fixtures_dir / "epistolae"
-
-
-@pytest.fixture
-def edh_dir(fixtures_dir) -> Path:
-    """Path to EDH test fixtures."""
-    return fixtures_dir / "edh"
-
-
-@pytest.fixture
 def gutenberg_dir(fixtures_dir) -> Path:
     """Path to Project Gutenberg test fixtures."""
     return fixtures_dir / "gutenberg"
