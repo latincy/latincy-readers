@@ -50,6 +50,17 @@ Repository = "https://github.com/latincy/latincy-readers"
 [tool.hatch.build.targets.wheel]
 packages = ["src/latincyreaders"]
 
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "notebooks/",
+    "tests/",
+    "cli/",
+    "cli/**",
+    "assets/",
+    "uv.lock",
+    ".claude/",
+]
+
 [tool.ruff]
 line-length = 88
 target-version = "py310"
