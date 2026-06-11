@@ -45,10 +45,11 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
 
     If no root path is provided, looks for the corpus in:
     1. The path specified by TESSERAE_PATH environment variable
-    2. ~/latincy_data/lat_text_tesserae/texts
+    2. ~/latincy_data/lat_text_tesserae
 
     If the corpus is not found and auto_download=True (default), offers to
-    download from GitHub.
+    download it (the LatinCy fork) from GitHub into ~/latincy_data; the .tess
+    files live under its texts/ subdirectory.
 
     Example:
         >>> reader = TesseraeReader()  # Uses default location or downloads
@@ -64,9 +65,9 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
     """
 
     CITATION_PATTERN = re.compile(r"<([^>]+)>\s*(.+)")
-    CORPUS_URL = "https://github.com/cltk/lat_text_tesserae.git"
+    CORPUS_URL = "https://github.com/latincy/lat_text_tesserae.git"
     ENV_VAR = "TESSERAE_PATH"
-    DEFAULT_SUBDIR = "lat_text_tesserae/texts"
+    DEFAULT_SUBDIR = "lat_text_tesserae"
     _FILE_CHECK_PATTERN = "**/*.tess"
 
     def __init__(
@@ -109,8 +110,8 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
 
     @classmethod
     def _default_file_pattern(cls) -> str:
-        """Tesserae files use .tess extension."""
-        return "*.tess"
+        """Tesserae files use .tess extension (under the repo's texts/ dir)."""
+        return "**/*.tess"
 
     def _parse_lines(self, text: str) -> Iterator[TesseraeLine]:
         """Parse citation-text pairs from Tesserae format.
