@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-06-11
+
+### Fixed
+
+- **TesseraeReader** now downloads the maintained LatinCy fork
+  (`github.com/latincy/lat_text_tesserae`) instead of the CLTK upstream
+  (`github.com/cltk/lat_text_tesserae`), so it picks up the LatinCy cleanup
+  releases (v0.3 capitalization, v0.4 whitespace/Unicode, v0.5 accent/Greek
+  normalization).
+- Fixed the Tesserae download/read layout: clones to a clean
+  `~/latincy_data/lat_text_tesserae` folder (was `…/lat_text_tesserae/texts`,
+  which nested the repo's own `texts/` one level too deep) and reads `.tess`
+  recursively from the repo's `texts/` subdirectory.
+
 ## [1.6.0] - 2026-06-08
 
 ### Added
