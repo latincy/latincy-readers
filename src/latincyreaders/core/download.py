@@ -24,6 +24,12 @@ class DownloadableCorpusMixin:
         DEFAULT_SUBDIR: Subdirectory name under ~/latincy_data.
         _FILE_CHECK_PATTERN: Glob pattern to verify corpus exists (e.g., "**/*.tess").
 
+    Optionally:
+        CORPUS_VERSION: A git tag/branch to pin the clone to (e.g. "v0.5").
+            When set, ``download()`` clones that ref instead of the default
+            branch HEAD, making the corpus reproducible across time. Leave as
+            None to track the default branch (legacy behaviour).
+
     Example:
         class MyCorpusReader(DownloadableCorpusMixin, BaseCorpusReader):
             CORPUS_URL = "https://github.com/org/corpus.git"
@@ -43,6 +49,10 @@ class DownloadableCorpusMixin:
     DEFAULT_SUBDIR: str
     _FILE_CHECK_PATTERN: str = "**/*"
 
+    # Optional: pin the clone to a git tag/branch for reproducibility.
+    # None = track the default branch HEAD (legacy behaviour).
+    CORPUS_VERSION: str | None = None
+
     @classmethod
     def default_root(cls) -> Path:
         """Return the default corpus location.
@@ -59,11 +69,14 @@ class DownloadableCorpusMixin:
         return LATINCY_DATA / cls.DEFAULT_SUBDIR
 
     @classmethod
-    def _get_default_root(cls, auto_download: bool = True) -> Path:
+    def _get_default_root(
+        cls, auto_download: bool = True, ref: str | None = None
+    ) -> Path:
         """Get the corpus root, downloading if necessary.
 
         Args:
             auto_download: If True and corpus not found, offer to download.
+            ref: git tag/branch to clone. Defaults to CORPUS_VERSION.
 
         Returns:
             Path to the corpus.
@@ -84,11 +97,13 @@ class DownloadableCorpusMixin:
             )
 
         # Prompt for download
+        pin = ref or cls.CORPUS_VERSION
+        pin_note = f" ({pin})" if pin else ""
         print(f"{cls.__name__} corpus not found at {root}")
-        response = input("Download from GitHub? [y/N]: ").strip().lower()
+        response = input(f"Download{pin_note} from GitHub? [y/N]: ").strip().lower()
 
         if response in ("y", "yes"):
-            cls.download(root)
+            cls.download(root, ref=ref)
             return root
         else:
             raise FileNotFoundError(
@@ -97,11 +112,15 @@ class DownloadableCorpusMixin:
             )
 
     @classmethod
-    def download(cls, destination: Path | None = None) -> Path:
+    def download(
+        cls, destination: Path | None = None, ref: str | None = None
+    ) -> Path:
         """Download the corpus from GitHub.
 
         Args:
             destination: Where to clone the corpus. Defaults to default_root().
+            ref: git tag/branch to clone. Defaults to CORPUS_VERSION. When set,
+                the clone is pinned to that ref for reproducibility.
 
         Returns:
             Path to the downloaded corpus.
@@ -120,12 +139,16 @@ class DownloadableCorpusMixin:
 
         destination.parent.mkdir(parents=True, exist_ok=True)
 
-        print(f"Cloning {cls.__name__} corpus to {destination}...")
+        pin = ref or cls.CORPUS_VERSION
+        cmd = ["git", "clone", "--depth", "1"]
+        if pin:
+            cmd += ["--branch", pin]
+        cmd += [cls.CORPUS_URL, str(destination)]
+
+        pin_note = f" at {pin}" if pin else ""
+        print(f"Cloning {cls.__name__} corpus{pin_note} to {destination}...")
         try:
-            subprocess.run(
-                ["git", "clone", "--depth", "1", cls.CORPUS_URL, str(destination)],
-                check=True,
-            )
+            subprocess.run(cmd, check=True)
             print(f"Successfully downloaded to {destination}")
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to clone repository: {e}") from e
@@ -136,3 +159,31 @@ class DownloadableCorpusMixin:
             )
 
         return destination
+
+    @classmethod
+    def installed_version(cls, root: Path | None = None) -> str | None:
+        """Return the corpus version actually present on disk.
+
+        Reads the git tag (or commit) of the cloned corpus via
+        ``git describe``. Returns None if the corpus is not a git checkout
+        (e.g. a manually unpacked tarball) or git is unavailable.
+
+        Args:
+            root: Corpus root. Defaults to default_root().
+
+        Returns:
+            The tag name (e.g. "v0.5"), a commit hash, or None.
+        """
+        root = Path(root) if root is not None else cls.default_root()
+        if not (root / ".git").exists():
+            return None
+        try:
+            result = subprocess.run(
+                ["git", "-C", str(root), "describe", "--tags", "--always"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return None
+        return result.stdout.strip() or None

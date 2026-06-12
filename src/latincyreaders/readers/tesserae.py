@@ -10,6 +10,7 @@ followed by text:
 from __future__ import annotations
 
 import re
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, TYPE_CHECKING
@@ -70,6 +71,10 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
     DEFAULT_SUBDIR = "lat_text_tesserae"
     _FILE_CHECK_PATTERN = "**/*.tess"
 
+    # Pin to a specific corpus release for reproducibility. Override per-instance
+    # with corpus_version=, or set TESSERAE_PATH to use a local checkout.
+    CORPUS_VERSION = "v0.5"
+
     def __init__(
         self,
         root: str | Path | None = None,
@@ -77,6 +82,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
         encoding: str = "utf-8",
         annotation_level: AnnotationLevel = AnnotationLevel.FULL,
         auto_download: bool = True,
+        corpus_version: str | None = None,
         cache: bool = True,
         cache_maxsize: int = 128,
         model_name: str = "la_core_web_lg",
@@ -91,6 +97,11 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
             encoding: Text encoding.
             annotation_level: How much NLP annotation to apply.
             auto_download: If True and corpus not found, offer to download.
+            corpus_version: git tag/branch of the corpus to download (e.g.
+                "v0.5", "v0.6.2", or "main"). Defaults to the pinned
+                ``CORPUS_VERSION``. Only affects a fresh download; if a corpus
+                is already present at the target location, that copy is used and
+                a warning is issued on version mismatch.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
             model_name: Name of the spaCy model to load for BASIC/FULL levels.
@@ -98,8 +109,13 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
             **kwargs: Additional arguments passed to BaseCorpusReader
                 (e.g., backend, cache_config, canonical_config).
         """
+        self._requested_corpus_version = corpus_version or self.CORPUS_VERSION
+
         if root is None:
-            root = self._get_default_root(auto_download)
+            root = self._get_default_root(
+                auto_download, ref=self._requested_corpus_version
+            )
+            self._warn_on_version_mismatch(root)
 
         super().__init__(
             root, fileids, encoding, annotation_level,
@@ -107,6 +123,36 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
             model_name=model_name, lang=lang,
             **kwargs,
         )
+
+    @property
+    def corpus_version(self) -> str | None:
+        """The corpus release actually present on disk (git tag/commit).
+
+        Returns None if the corpus is not a git checkout (e.g. a manually
+        unpacked copy) or git is unavailable. Use this to record exactly which
+        corpus produced an analysis.
+        """
+        return self.installed_version(self._root)
+
+    def _warn_on_version_mismatch(self, root: str | Path) -> None:
+        """Warn if the on-disk corpus differs from the requested version.
+
+        A re-download is not triggered automatically: removing or relocating an
+        existing corpus is the user's call. Set TESSERAE_PATH or delete the
+        directory to fetch a different version.
+        """
+        requested = self._requested_corpus_version
+        if not requested:
+            return
+        installed = self.installed_version(root)
+        if installed is not None and installed != requested:
+            warnings.warn(
+                f"Tesserae corpus at {root} is {installed!r}, but {requested!r} "
+                f"was requested. Using the existing copy. To get {requested!r}, "
+                f"remove that directory (or set TESSERAE_PATH) and re-create the "
+                f"reader.",
+                stacklevel=3,
+            )
 
     @classmethod
     def _default_file_pattern(cls) -> str:

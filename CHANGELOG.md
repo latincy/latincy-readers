@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-06-12
+
+### Added
+
+- **Reproducible corpus pinning.** `DownloadableCorpusMixin` now supports an
+  optional `CORPUS_VERSION` class attribute; when set, the corpus is cloned at
+  that git tag/branch (`git clone --branch …`) instead of the default-branch
+  HEAD. This makes "I ran X on corpus Y" reproducible across time.
+  - **TesseraeReader** is pinned to `CORPUS_VERSION = "v0.5"`. Override per
+    instance with `TesseraeReader(corpus_version="v0.6.2")` (or `"main"`), or
+    point `TESSERAE_PATH` at a local checkout.
+  - `reader.corpus_version` reports the release actually on disk (via
+    `git describe`), so a notebook/paper can record exactly which corpus
+    produced a result; returns `None` for non-git checkouts.
+  - `DownloadableCorpusMixin.installed_version()` and `download(ref=…)` added.
+  - On a version mismatch (requested ≠ on-disk), the reader warns and uses the
+    existing copy rather than silently serving the wrong data or clobbering it.
+  - Backward compatible: readers without `CORPUS_VERSION` (e.g.
+    GreekTesseraeReader) keep tracking the default branch.
+
 ## [1.6.1] - 2026-06-11
 
 ### Fixed
