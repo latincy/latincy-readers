@@ -141,6 +141,65 @@ class TestDownloadMethod:
             MockCorpusReader.download(dest)
 
 
+class PinnedCorpusReader(DownloadableCorpusMixin):
+    """Mock reader with a pinned corpus version."""
+
+    CORPUS_URL = "https://github.com/test/test.git"
+    ENV_VAR = "PINNED_CORPUS_PATH"
+    DEFAULT_SUBDIR = "pinned_corpus"
+    _FILE_CHECK_PATTERN = "*.txt"
+    CORPUS_VERSION = "v0.5"
+
+
+class TestVersionPinning:
+    """Tests for CORPUS_VERSION pinning and version reporting."""
+
+    def _capture_clone(self, monkeypatch):
+        """Patch subprocess.run and return a list that captures the argv."""
+        calls = []
+        monkeypatch.setattr(
+            "subprocess.run", lambda cmd, *a, **kw: calls.append(cmd)
+        )
+        return calls
+
+    def test_unpinned_clone_has_no_branch(self, tmp_path, monkeypatch):
+        """A reader without CORPUS_VERSION clones without --branch."""
+        calls = self._capture_clone(monkeypatch)
+        MockCorpusReader.download(tmp_path / "c")
+        assert "--branch" not in calls[0]
+
+    def test_pinned_clone_uses_branch(self, tmp_path, monkeypatch):
+        """CORPUS_VERSION is passed to git clone via --branch."""
+        calls = self._capture_clone(monkeypatch)
+        PinnedCorpusReader.download(tmp_path / "c")
+        assert "--branch" in calls[0]
+        assert "v0.5" in calls[0]
+
+    def test_ref_overrides_pin(self, tmp_path, monkeypatch):
+        """An explicit ref= overrides CORPUS_VERSION."""
+        calls = self._capture_clone(monkeypatch)
+        PinnedCorpusReader.download(tmp_path / "c", ref="v0.6.2")
+        assert "v0.6.2" in calls[0]
+        assert "v0.5" not in calls[0]
+
+    def test_installed_version_none_without_git(self, tmp_path):
+        """installed_version() returns None for a non-git directory."""
+        corpus_dir = tmp_path / "plain"
+        corpus_dir.mkdir()
+        assert PinnedCorpusReader.installed_version(corpus_dir) is None
+
+    def test_installed_version_reads_git_describe(self, tmp_path, monkeypatch):
+        """installed_version() returns the trimmed git describe output."""
+        corpus_dir = tmp_path / "repo"
+        (corpus_dir / ".git").mkdir(parents=True)
+
+        result = MagicMock()
+        result.stdout = "v0.5\n"
+        monkeypatch.setattr("subprocess.run", lambda *a, **kw: result)
+
+        assert PinnedCorpusReader.installed_version(corpus_dir) == "v0.5"
+
+
 class TestInteractiveDownload:
     """Tests for interactive download prompts."""
 

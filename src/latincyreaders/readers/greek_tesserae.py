@@ -68,7 +68,9 @@ class GreekTesseraeReader(TesseraeReader):
         return LATINCY_DATA / cls._CLONE_SUBDIR
 
     @classmethod
-    def _get_default_root(cls, auto_download: bool = True) -> Path:
+    def _get_default_root(
+        cls, auto_download: bool = True, ref: str | None = None
+    ) -> Path:
         """Get the corpus root, downloading if necessary.
 
         Overrides the parent to handle the Greek repo's nested structure:
@@ -88,11 +90,13 @@ class GreekTesseraeReader(TesseraeReader):
             )
 
         # Prompt for download
+        pin = ref or cls.CORPUS_VERSION
+        pin_note = f" ({pin})" if pin else ""
         print(f"{cls.__name__} corpus not found at {root}")
-        response = input("Download from GitHub? [y/N]: ").strip().lower()
+        response = input(f"Download{pin_note} from GitHub? [y/N]: ").strip().lower()
 
         if response in ("y", "yes"):
-            cls.download()
+            cls.download(ref=ref)
             return root
         else:
             raise FileNotFoundError(
@@ -101,7 +105,9 @@ class GreekTesseraeReader(TesseraeReader):
             )
 
     @classmethod
-    def download(cls, destination: Path | None = None) -> Path:
+    def download(
+        cls, destination: Path | None = None, ref: str | None = None
+    ) -> Path:
         """Download the corpus from GitHub.
 
         Clones the repo to the clone root, then returns the texts
@@ -109,6 +115,8 @@ class GreekTesseraeReader(TesseraeReader):
 
         Args:
             destination: Where to clone the repo. Defaults to clone root.
+            ref: git tag/branch to clone. Defaults to CORPUS_VERSION (None for
+                this corpus, which tracks the upstream default branch).
 
         Returns:
             Path to the downloaded corpus texts directory.
@@ -124,12 +132,16 @@ class GreekTesseraeReader(TesseraeReader):
 
         clone_dest.parent.mkdir(parents=True, exist_ok=True)
 
-        print(f"Cloning {cls.__name__} corpus to {clone_dest}...")
+        pin = ref or cls.CORPUS_VERSION
+        cmd = ["git", "clone", "--depth", "1"]
+        if pin:
+            cmd += ["--branch", pin]
+        cmd += [cls.CORPUS_URL, str(clone_dest)]
+
+        pin_note = f" at {pin}" if pin else ""
+        print(f"Cloning {cls.__name__} corpus{pin_note} to {clone_dest}...")
         try:
-            subprocess.run(
-                ["git", "clone", "--depth", "1", cls.CORPUS_URL, str(clone_dest)],
-                check=True,
-            )
+            subprocess.run(cmd, check=True)
             print(f"Successfully downloaded to {clone_dest}")
         except subprocess.CalledProcessError as e:
             raise RuntimeError(f"Failed to clone repository: {e}") from e
