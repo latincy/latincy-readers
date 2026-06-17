@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "latincy-readers"
-version = "1.6.1"
+version = "1.6.2"
 description = "Corpus readers for Latin texts with LatinCy/spaCy integration"
 readme = "README.md"
 license = "MIT"
@@ -42,6 +42,7 @@ dev = [
     "ruff>=0.1",
     "mypy>=1.0",
     "numpy>=1.24",
+    "nbformat>=5.0",
 ]
 [project.urls]
 Homepage = "https://github.com/latincy/latincy-readers"
