@@ -7,20 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- **`notebooks/ud-demo.ipynb` rendered as "Invalid Notebook"** on GitHub
-  (`'outputs' is a required property`): a code cell was missing the required
-  `outputs` and `execution_count` keys. The cell is now schema-compliant.
-
-### Added
-
-- **Notebook-validity check.** `tests/test_notebooks.py` validates every
-  notebook against the nbformat schema (and asserts it is normalized), and a
-  lightweight `notebooks` GitHub Actions workflow runs the check on push/PR
-  touching `notebooks/`. This prevents a malformed notebook from reaching
-  `main`.
-
 ## [1.6.2] - 2026-06-12
 
 ### Added
