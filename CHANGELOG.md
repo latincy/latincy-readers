@@ -7,10 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.6.2] - 2026-06-12
+## [1.6.2] - 2026-06-20
 
 ### Added
 
+- **Txtdown 0.2 integration.** `TxtdownReader` now depends on the published
+  [`txtdown>=0.2.0`](https://pypi.org/project/txtdown/) package and surfaces its
+  two new markup features through spaCy custom extensions:
+  - **Speaker markup** (`@Name:` for dramatic/dialogue texts) → `span._.speaker`
+    and `token._.speaker`. `sents_with_citations()` reports the sentence's
+    `speaker` (single value when unambiguous) plus a `speakers` list when a
+    sentence spans a speaker change. Section-level speaker is set only when the
+    whole section is a single voice.
+  - **Cross-source quotation** (leading `>`, formerly an inline "blockquote") →
+    `span._.is_quote` and `token._.is_quote`. In 0.2 a `>` line is a verbatim
+    quotation of another source: the marker is stripped and the line is kept on
+    its own line (it is no longer joined inline with the preceding authorial
+    line). `sents_with_citations()` reports `is_quote=True` for sentences whose
+    covered lines are entirely quotation.
 - **Reproducible corpus pinning.** `DownloadableCorpusMixin` now supports an
   optional `CORPUS_VERSION` class attribute; when set, the corpus is cloned at
   that git tag/branch (`git clone --branch …`) instead of the default-branch

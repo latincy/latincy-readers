@@ -76,7 +76,7 @@ for text in reader.texts():
 | `PTAReader` | `.xml` | Yes | Patristic Text Archive (Greek & Latin) |
 | `CSELReader` | `.xml` | No | Corpus Scriptorum Ecclesiasticorum Latinorum |
 | `ProjectGutenbergReader` | `.txt` | Yes (fetch) | Project Gutenberg plain-text files |
-| `TxtdownReader` | `.txtd` | No | Txtdown format with citations and critical markup |
+| `TxtdownReader` | `.txtd` | No | Txtdown format: citations, critical markup, speaker & cross-source quotation |
 | `UDReader` | `.conllu` | No | Universal Dependencies CoNLL-U |
 | `LatinUDReader` | `.conllu` | Yes | All 6 Latin UD treebanks |
 

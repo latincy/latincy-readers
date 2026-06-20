@@ -1,0 +1,16 @@
+---
+author: Test Author
+work: Dialogue Test
+speakers: [Alpha, Beta]
+note: "Section 1 is prose with no speaker; section 2 is dialogue and changes speaker mid-section (Alpha then Beta), like De Amicitia 8 (Scaevola then Laelius)."
+---
+
+--- 1
+
+Prooemium sine persona loquente scriptum est.
+
+--- 2
+
+@Alpha: Verba quae Alpha prima dicit.
+
+@Beta: Responsio quam Beta reddit.

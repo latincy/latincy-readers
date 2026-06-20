@@ -225,17 +225,28 @@ class TxtdownReader(BaseCorpusReader):
             **doc.metadata.extras,
         }
 
-        # Build section data for citation tracking
+        # Build section data for citation tracking. Carry the txtdown fields
+        # (speaker, label, is_quote) through verbatim — this dict IS the framework-
+        # neutral representation; the spaCy span/token extensions are bound from it
+        # later.
         sections_data = []
         for section in doc.sections:
+            lines = [
+                {"number": line.number, "text": line.text,
+                 "speaker": getattr(line, "speaker", None),
+                 "label": getattr(line, "label", None),
+                 "is_quote": getattr(line, "is_quote", False)}
+                for line in section.lines
+            ]
+            speakers = [sp for sp in {ln["speaker"] for ln in lines} if sp]
             section_info = {
                 "id": section.id,
                 "title": section.title,
                 "line_count": len(section.lines),
-                "lines": [
-                    {"number": line.number, "text": line.text}
-                    for line in section.lines
-                ],
+                # section-level speaker only when the whole section is one voice;
+                # dialogue sections can change speaker mid-section (carried per line)
+                "speaker": speakers[0] if len(speakers) == 1 else None,
+                "lines": lines,
             }
             sections_data.append(section_info)
 
@@ -393,13 +404,23 @@ class TxtdownReader(BaseCorpusReader):
 
                     if span:
                         citation = f"{section_id}.{line_num}"
+                        speaker = line_info.get("speaker")
+                        is_quote = line_info.get("is_quote", False)
                         line_meta = {
                             "section_id": section_id,
                             "section_title": section_title,
                             "line_number": line_num,
+                            "speaker": speaker,
+                            "label": line_info.get("label"),
+                            "is_quote": is_quote,
                         }
                         span._.citation = citation
                         span._.metadata = line_meta
+                        span._.speaker = speaker
+                        span._.is_quote = is_quote
+                        for tok in span:  # spaCy binding; data lives in line_meta
+                            tok._.speaker = speaker
+                            tok._.is_quote = is_quote
                         line_spans.append(span)
                         line_span_annotations.append((span, citation, line_meta))
 
@@ -415,7 +436,9 @@ class TxtdownReader(BaseCorpusReader):
                 section_span._.metadata = {
                     "section_id": section_id,
                     "section_title": section_title,
+                    "speaker": section_info.get("speaker"),
                 }
+                section_span._.speaker = section_info.get("speaker")
                 section_spans.append(section_span)
 
             # Advance past whitespace between sections. The raw text uses
@@ -431,6 +454,8 @@ class TxtdownReader(BaseCorpusReader):
         for span, citation, span_meta in line_span_annotations:
             span._.citation = citation
             span._.metadata = span_meta
+            span._.speaker = span_meta.get("speaker")
+            span._.is_quote = span_meta.get("is_quote", False)
 
         doc.spans["sections"] = section_spans
         doc.spans["lines"] = line_spans
@@ -466,19 +491,36 @@ class TxtdownReader(BaseCorpusReader):
                 covered_lines = []
                 section_id = None
                 section_title = None
+                speakers: list[str] = []
+                quoted_lines = 0
+                covered_count = 0
 
                 for line_span in line_spans:
                     if (line_span.start < sent.end and line_span.end > sent.start):
                         covered_lines.append(line_span._.citation)
+                        covered_count += 1
                         if line_span._.metadata:
                             section_id = line_span._.metadata.get("section_id")
                             section_title = line_span._.metadata.get("section_title")
+                            spk = line_span._.metadata.get("speaker")
+                            if spk and spk not in speakers:
+                                speakers.append(spk)
+                            if line_span._.metadata.get("is_quote"):
+                                quoted_lines += 1
 
                 yield {
                     "sentence": sent.text,
                     "section_id": section_id,
                     "section_title": section_title,
                     "line_citations": covered_lines,
+                    # the sentence's speaker (single value when unambiguous), plus
+                    # the full list in case a sentence spans a speaker change
+                    "speaker": speakers[0] if len(speakers) == 1 else None,
+                    "speakers": speakers,
+                    # True only when every line the sentence covers is a cross-source
+                    # quotation (a sentence that mixes quoted and authorial lines is
+                    # not itself a quote); False when the sentence covers no lines.
+                    "is_quote": covered_count > 0 and quoted_lines == covered_count,
                     "fileid": fileid,
                     "metadata": {
                         "author": metadata.get("author"),

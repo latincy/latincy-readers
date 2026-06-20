@@ -179,7 +179,13 @@ class TestTxtdownSentsWithCitations:
 
 
 class TestTxtdownBlockquotes:
-    """Tests for blockquote handling in txtdown files."""
+    """Cross-source quotation (``>``) handling — txtdown >=0.2.0 Line.is_quote.
+
+    In txtdown 0.2 a leading ``>`` marks a verbatim quotation of another source.
+    The marker is stripped, the quotation keeps its own line break (it is *not*
+    joined inline with the preceding authorial line, as the 0.1 "blockquote" was),
+    and the line is flagged ``is_quote``.
+    """
 
     @pytest.fixture
     def reader(self, txtdown_dir):
@@ -191,24 +197,49 @@ class TestTxtdownBlockquotes:
         )
 
     def test_blockquote_stripped_from_text(self, reader):
-        """Blockquote markers (>) are stripped from text."""
+        """Quotation markers (>) are stripped from text."""
         texts = list(reader.texts())
         all_text = " ".join(texts)
         assert ">" not in all_text
 
-    def test_blockquote_joins_with_preceding(self, reader):
-        """Blockquote line joins with preceding text."""
-        texts = list(reader.texts())
-        all_text = " ".join(texts)
-        # The blockquote should join to form a continuous sentence
-        assert "per aras Sanguine" in all_text
+    def test_quote_kept_on_its_own_line(self, reader):
+        """A quotation stays on its own line, not joined inline with the prior line.
 
-    def test_consecutive_blockquotes_join(self, reader):
-        """Multiple consecutive blockquote lines join together."""
+        txtdown 0.2 changed ``>`` from an inline-join blockquote to a standalone
+        cross-source quotation, so the authorial line and the quotation are
+        newline-separated (was a single space in 0.1).
+        """
         texts = list(reader.texts())
         all_text = " ".join(texts)
-        # Should have continuation joined
-        assert "continuation that spans" in all_text
+        assert "per aras\nSanguine" in all_text
+
+    def test_consecutive_quotes_each_on_own_line(self, reader):
+        """Consecutive quotation lines are each preserved as separate lines."""
+        texts = list(reader.texts())
+        all_text = " ".join(texts)
+        assert "quoted continuation\nthat spans" in all_text
+
+    def test_quote_lines_flagged_is_quote(self, reader):
+        """``>`` lines set span/token is_quote; authorial lines stay False."""
+        doc = next(reader.docs())
+        by_citation = {sp._.citation: sp for sp in doc.spans["lines"]}
+        # 1.1 authorial, 1.2 quotation; 2.1 authorial, 2.2/2.3 quotation
+        assert by_citation["1.1"]._.is_quote is False
+        assert by_citation["1.2"]._.is_quote is True
+        assert by_citation["2.1"]._.is_quote is False
+        assert by_citation["2.2"]._.is_quote is True
+        assert by_citation["2.3"]._.is_quote is True
+        # tokens inherit the line flag
+        assert all(t._.is_quote for t in by_citation["1.2"])
+        assert all(not t._.is_quote for t in by_citation["1.1"])
+
+    def test_sents_with_citations_expose_is_quote(self, reader):
+        """sents_with_citations() reports is_quote per sentence."""
+        sents = list(reader.sents_with_citations())
+        # Every sentence carries the flag…
+        assert all("is_quote" in s for s in sents)
+        # …and at least one fully-quoted sentence is detected.
+        assert any(s["is_quote"] for s in sents)
 
     def test_blockquote_sentence_segmentation(self, reader):
         """Sentence segmentation works correctly across blockquotes."""
@@ -482,3 +513,40 @@ class TestTxtdownImportError:
 
         with pytest.raises(ImportError, match="txtdown package required"):
             TxtdownReader(root=txtdown_dir)
+
+
+class TestSpeaker:
+    """@Speaker: dialogue markup → span/token/sentence speaker (txtdown >=0.2.0)."""
+
+    @pytest.fixture
+    def reader(self, txtdown_dir):
+        return TxtdownReader(
+            root=txtdown_dir,
+            fileids="speaker.txtd",
+            annotation_level=AnnotationLevel.TOKENIZE,
+        )
+
+    def test_preface_section_has_no_speaker(self, reader):
+        doc = next(reader.docs())
+        s1 = [sp for sp in doc.spans["lines"] if sp._.metadata["section_id"] == "1"]
+        assert s1 and all(sp._.speaker is None for sp in s1)
+
+    def test_dialogue_lines_carry_speaker_per_line(self, reader):
+        doc = next(reader.docs())
+        spk = {sp._.speaker for sp in doc.spans["lines"]
+               if sp._.metadata["section_id"] == "2"}
+        assert spk == {"Alpha", "Beta"}  # speaker changes mid-section
+
+    def test_token_speaker_inherits_from_line(self, reader):
+        doc = next(reader.docs())
+        for sp in doc.spans["lines"]:
+            if sp._.speaker:
+                assert all(t._.speaker == sp._.speaker for t in sp)
+
+    def test_speaker_label_stripped_from_text(self, reader):
+        doc = next(reader.docs())
+        assert "@" not in doc.text  # @Name: never reaches the NLP text
+
+    def test_sents_with_citations_expose_speaker(self, reader):
+        speakers = {s["speaker"] for s in reader.sents_with_citations() if s["speaker"]}
+        assert {"Alpha", "Beta"} <= speakers
