@@ -142,7 +142,10 @@ class TxtdownReader(BaseCorpusReader):
                     else:
                         result_lines.append(stripped)
             else:
-                result_lines.append(line)
+                # Normalize leading indentation out of the NLP text (e.g. indented
+                # elegiac pentameters). The indent is preserved as the per-line
+                # is_indented flag on the line span; a no-op for flush-left prose.
+                result_lines.append(line.lstrip(" \t"))
 
         return "\n".join(result_lines)
 
@@ -235,7 +238,11 @@ class TxtdownReader(BaseCorpusReader):
                 {"number": line.number, "text": line.text,
                  "speaker": getattr(line, "speaker", None),
                  "label": getattr(line, "label", None),
-                 "is_quote": getattr(line, "is_quote", False)}
+                 "is_quote": getattr(line, "is_quote", False),
+                 # verse lineation: the source line was indented (e.g. an elegiac
+                 # pentameter). Captured from the raw text before normalization strips
+                 # it; carried to the line span so the reader can render the indent.
+                 "is_indented": line.text[:1].isspace()}
                 for line in section.lines
             ]
             speakers = [sp for sp in {ln["speaker"] for ln in lines} if sp]
@@ -413,6 +420,7 @@ class TxtdownReader(BaseCorpusReader):
                             "speaker": speaker,
                             "label": line_info.get("label"),
                             "is_quote": is_quote,
+                            "is_indented": line_info.get("is_indented", False),
                         }
                         span._.citation = citation
                         span._.metadata = line_meta

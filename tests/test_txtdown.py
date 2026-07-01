@@ -550,3 +550,46 @@ class TestSpeaker:
     def test_sents_with_citations_expose_speaker(self, reader):
         speakers = {s["speaker"] for s in reader.sents_with_citations() if s["speaker"]}
         assert {"Alpha", "Beta"} <= speakers
+
+
+class TestTxtdownIndentation:
+    """Verse indentation is normalized out of the NLP text but preserved as a
+    per-line ``is_indented`` flag on the line-span metadata (verse.txtd: elegiac
+    couplets whose pentameters are indented four spaces, hexameters flush-left)."""
+
+    @pytest.fixture
+    def reader(self, txtdown_dir):
+        return TxtdownReader(
+            root=txtdown_dir,
+            fileids="verse.txtd",
+            annotation_level=AnnotationLevel.BASIC,
+        )
+
+    def test_texts_has_no_leading_indentation(self, reader):
+        """texts() (the raw-text path) is de-indented by _normalize_pre_markup.
+
+        The docs() path is moot for this: the spaCy pipeline collapses every run
+        of whitespace, newlines included, so indentation never reaches the token
+        spine — verse-ness is carried by the is_indented flag below instead."""
+        text = next(iter(reader.texts()))
+        indented = [ln for ln in text.split("\n") if ln[:1] in (" ", "\t")]
+        assert indented == []
+
+    def test_is_indented_flag_on_line_spans(self, reader):
+        """Indented pentameters flag True; flush hexameters flag False."""
+        doc = next(reader.docs())
+        flag = {sp._.citation: sp._.metadata.get("is_indented")
+                for sp in doc.spans["lines"]}
+        assert flag["1.1"] is False
+        assert flag["1.2"] is True
+        assert flag["1.3"] is False
+        assert flag["1.4"] is True
+        assert flag["2.1"] is False
+        assert flag["2.2"] is True
+
+    def test_indented_line_text_still_resolves(self, reader):
+        """De-indented line spans still map onto the right tokens (citation intact)."""
+        doc = next(reader.docs())
+        by_cite = {sp._.citation: sp for sp in doc.spans["lines"]}
+        assert by_cite["1.2"].text.startswith("quam nudasse")
+        assert by_cite["2.2"].text.startswith("et sine Cerintho")
