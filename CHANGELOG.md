@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     its own line (it is no longer joined inline with the preceding authorial
     line). `sents_with_citations()` reports `is_quote=True` for sentences whose
     covered lines are entirely quotation.
+- **Per-line indentation.** Verse works indent some lines (e.g. elegiac
+  pentameters). Leading indentation is now normalized out of the `texts()`
+  output (previously it leaked into the raw text) and captured instead as a
+  per-line datum: `sents_with_citations()` reports `is_indented=True` for
+  sentences whose source line was indented, so a reader can render the indent.
+  A no-op for flush-left prose; the `docs()` token spine is unaffected.
 - **Reproducible corpus pinning.** `DownloadableCorpusMixin` now supports an
   optional `CORPUS_VERSION` class attribute; when set, the corpus is cloned at
   that git tag/branch (`git clone --branch …`) instead of the default-branch
