@@ -65,6 +65,21 @@ def _register_extensions() -> None:
     if not Token.has_extension("citation"):
         Token.set_extension("citation", default=None)
 
+    # Speaker (dramatic texts, txtdown @Name:). The framework-neutral carry is the
+    # line/sentence metadata dicts; these are the spaCy binding on top of it.
+    if not Span.has_extension("speaker"):
+        Span.set_extension("speaker", default=None)
+    if not Token.has_extension("speaker"):
+        Token.set_extension("speaker", default=None)
+
+    # Cross-source quotation (txtdown >=0.2.0 ``>`` markup, Line.is_quote). True when
+    # the line/token verbatim quotes another source. Like speaker, the metadata dicts
+    # are the framework-neutral carry; these extensions are the spaCy binding.
+    if not Span.has_extension("is_quote"):
+        Span.set_extension("is_quote", default=False)
+    if not Token.has_extension("is_quote"):
+        Token.set_extension("is_quote", default=False)
+
     # UD treebank annotations (full CoNLL-U token data)
     if not Token.has_extension("ud"):
         Token.set_extension("ud", default=None)
