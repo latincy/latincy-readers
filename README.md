@@ -1,12 +1,8 @@
-<p align="center">
-  <img src="assets/latincy-readers-logo.jpg" alt="LatinCy Readers" width="400">
-</p>
-
-# LatinCy Readers
+<img src="assets/latincy-readers-logo.jpg" alt="LatinCy Readers" width="400">
 
 Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) NLP integration.
 
-Version 1.6.0; Python 3.10+; LatinCy 3.9.0+
+Version 1.6.2; Python 3.10+; LatinCy 3.9.0+
 
 ## Installation
 
