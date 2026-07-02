@@ -299,6 +299,47 @@ class TestTxtdownBlockquotes:
                 )
 
 
+class TestTxtdownIsQuoteFullLevel:
+    """Regression: is_quote survives at FULL annotation level when speaker lines abut blockquotes.
+
+    PR #4 (_normalize_pre_markup lstrip fix) resolved a char_pos desync that caused
+    is_quote to be lost at BASIC/FULL level when verse lines with leading whitespace
+    appeared adjacent to @Speaker: dialogue lines.
+    """
+
+    @pytest.fixture
+    def reader(self, txtdown_dir):
+        return TxtdownReader(
+            root=txtdown_dir,
+            fileids="speaker_blockquote.txtd",
+            annotation_level=AnnotationLevel.FULL,
+        )
+
+    def test_is_quote_preserved_at_full_level(self, reader):
+        """is_quote is correctly set at FULL level when blockquotes abut speaker lines."""
+        doc = next(reader.docs())
+        by_citation = {sp._.citation: sp for sp in doc.spans["lines"]}
+        # Section 1: speaker prose → blockquote × 2 → authorial prose
+        assert by_citation["1.1"]._.is_quote is False  # @Cato: speaker line
+        assert by_citation["1.2"]._.is_quote is True   # > blockquote
+        assert by_citation["1.3"]._.is_quote is True   # > blockquote (consecutive)
+        assert by_citation["1.4"]._.is_quote is False  # prose after quotes
+        # Section 2: two speaker lines, then blockquote, then prose
+        assert by_citation["2.1"]._.is_quote is False  # @Laelius:
+        assert by_citation["2.2"]._.is_quote is False  # @Cato:
+        assert by_citation["2.3"]._.is_quote is True   # > blockquote following @Cato:
+        assert by_citation["2.4"]._.is_quote is False  # prose
+
+    def test_speaker_attr_preserved_at_full_level(self, reader):
+        """Speaker attribute is retained alongside is_quote at FULL level."""
+        doc = next(reader.docs())
+        by_citation = {sp._.citation: sp for sp in doc.spans["lines"]}
+        assert by_citation["1.1"]._.speaker == "Cato"
+        assert by_citation["2.1"]._.speaker == "Laelius"
+        assert by_citation["2.2"]._.speaker == "Cato"
+        assert by_citation["1.2"]._.speaker is None  # blockquote has no speaker
+
+
 class TestTxtdownCriticalMarkup:
     """Tests for text-critical markup: cruxes (†text†) and additions (<text>)."""
 
