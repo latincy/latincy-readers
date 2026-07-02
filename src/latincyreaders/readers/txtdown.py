@@ -239,6 +239,10 @@ class TxtdownReader(BaseCorpusReader):
                  "speaker": getattr(line, "speaker", None),
                  "label": getattr(line, "label", None),
                  "is_quote": getattr(line, "is_quote", False),
+                 # stanza boundary: one or more blank lines preceded this line in the
+                 # source (a verse-paragraph break). Carried to the line span so the
+                 # reader can open a gap; blank lines are not spans of their own.
+                 "blank_before": getattr(line, "blank_before", False),
                  # verse lineation: the source line was indented (e.g. an elegiac
                  # pentameter). Captured from the raw text before normalization strips
                  # it; carried to the line span so the reader can render the indent.
@@ -421,6 +425,7 @@ class TxtdownReader(BaseCorpusReader):
                             "label": line_info.get("label"),
                             "is_quote": is_quote,
                             "is_indented": line_info.get("is_indented", False),
+                            "blank_before": line_info.get("blank_before", False),
                         }
                         span._.citation = citation
                         span._.metadata = line_meta
