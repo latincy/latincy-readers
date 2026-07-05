@@ -1,8 +1,13 @@
 <img src="assets/latincy-readers-logo.jpg" alt="LatinCy Readers" width="400">
 
+[![PyPI version](https://img.shields.io/pypi/v/latincy-readers.svg)](https://pypi.org/project/latincy-readers/)
+[![Python versions](https://img.shields.io/pypi/pyversions/latincy-readers.svg)](https://pypi.org/project/latincy-readers/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) NLP integration.
 
-Version 1.6.2; Python 3.10+; LatinCy 3.9.6+
+Python 3.10+ · LatinCy 3.9.6+
 
 ## Installation
 
