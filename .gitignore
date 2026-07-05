@@ -166,3 +166,6 @@ cython_debug/
 # CLI output files (keep .gitkeep)
 cli/cli_output/*
 !cli/cli_output/.gitkeep
+
+# Git worktrees
+.worktrees/
