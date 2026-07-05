@@ -20,11 +20,11 @@ class TestGreekTesseraeReader:
 
     @pytest.fixture
     def reader_tokenize(self, greek_tesserae_dir):
-        """Reader with TOKENIZE annotation (uses grc blank model)."""
+        """Reader with MINIMAL annotation (blank model + sentencizer)."""
         return GreekTesseraeReader(
             root=greek_tesserae_dir,
             fileids="*.tess",
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
         )
 
     # -------------------------------------------------------------------------
@@ -111,7 +111,7 @@ class TestGreekTesseraeReader:
         assert "hom. il." in citation
 
     # -------------------------------------------------------------------------
-    # spaCy Doc access (TOKENIZE level)
+    # spaCy Doc access (MINIMAL level)
     # -------------------------------------------------------------------------
 
     def test_docs_yields_spacy_docs(self, reader_tokenize):
@@ -262,7 +262,7 @@ class TestGreekTesseraeSearch:
         return GreekTesseraeReader(
             root=greek_tesserae_dir,
             fileids="*.tess",
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
         )
 
     def test_search_returns_matches(self, reader):

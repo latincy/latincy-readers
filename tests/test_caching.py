@@ -15,7 +15,7 @@ class TestDocumentCaching:
         return TesseraeReader(
             root=tesserae_dir,
             fileids="*.tess",
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
             cache=True,
         )
 
@@ -25,7 +25,7 @@ class TestDocumentCaching:
         return TesseraeReader(
             root=tesserae_dir,
             fileids="*.tess",
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
             cache=False,
         )
 
@@ -33,7 +33,7 @@ class TestDocumentCaching:
         """Caching is enabled by default."""
         reader = TesseraeReader(
             root=tesserae_dir,
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
         )
         assert reader.cache_enabled is True
 
@@ -130,7 +130,7 @@ class TestCacheMaxSize:
         return TesseraeReader(
             root=tesserae_dir,
             fileids="*.tess",
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
             cache=True,
             cache_maxsize=2,
         )
@@ -139,7 +139,7 @@ class TestCacheMaxSize:
         """cache_maxsize limits cache size."""
         reader = TesseraeReader(
             root=tesserae_dir,
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
             cache=True,
             cache_maxsize=5,
         )

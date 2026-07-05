@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`AnnotationLevel.MINIMAL`** — new level between `NONE` and `TOKENIZE`. Uses a
+  blank spaCy model with a rule-based sentencizer (punctuation only); no model
+  download required. Replaces the old `TOKENIZE` behavior.
+
+### Changed
+
+- **`AnnotationLevel.TOKENIZE`** now loads `la_core_web_lg` with only the
+  tokenizer, `tok2vec`, and neural `senter` enabled. This is far more accurate
+  for Latin than the previous rule-based sentencizer and is the minimum
+  recommended level for any sentence-aware work.
+- Minimum recommended LatinCy model bumped to **3.9.6**.
+
 ## [1.6.2] - 2026-06-20
 
 ### Added
