@@ -17,11 +17,11 @@ class TestSpaCyBackend:
     @pytest.fixture
     def backend(self):
         """SpaCyBackend with TOKENIZE for fast tests."""
-        return SpaCyBackend(annotation_level=AnnotationLevel.TOKENIZE)
+        return SpaCyBackend(annotation_level=AnnotationLevel.MINIMAL)
 
     def test_lazy_loading(self):
         """NLP pipeline is None until first use."""
-        backend = SpaCyBackend(annotation_level=AnnotationLevel.TOKENIZE)
+        backend = SpaCyBackend(annotation_level=AnnotationLevel.MINIMAL)
         assert backend._nlp is None
 
     def test_process_returns_doc(self, backend):
@@ -98,7 +98,7 @@ class TestProtocol:
 
     def test_spacy_backend_is_nlp_backend(self):
         """SpaCyBackend satisfies the NLPBackend protocol."""
-        backend = SpaCyBackend(annotation_level=AnnotationLevel.TOKENIZE)
+        backend = SpaCyBackend(annotation_level=AnnotationLevel.MINIMAL)
         assert isinstance(backend, NLPBackend)
 
 
@@ -110,7 +110,7 @@ class TestBaseReaderWithBackend:
         from spacy.tokens import Doc
         from latincyreaders import TesseraeReader
 
-        backend = SpaCyBackend(annotation_level=AnnotationLevel.TOKENIZE)
+        backend = SpaCyBackend(annotation_level=AnnotationLevel.MINIMAL)
         reader = TesseraeReader(root=tesserae_dir, fileids="*.tess", backend=backend)
         docs = list(reader.docs())
         assert len(docs) > 0
@@ -124,7 +124,7 @@ class TestBaseReaderWithBackend:
         reader = TesseraeReader(
             root=tesserae_dir,
             fileids="*.tess",
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
         )
         docs = list(reader.docs())
         assert len(docs) > 0
@@ -134,7 +134,7 @@ class TestBaseReaderWithBackend:
         """Reader's nlp property delegates to backend when provided."""
         from latincyreaders import TesseraeReader
 
-        backend = SpaCyBackend(annotation_level=AnnotationLevel.TOKENIZE)
+        backend = SpaCyBackend(annotation_level=AnnotationLevel.MINIMAL)
         reader = TesseraeReader(root=tesserae_dir, fileids="*.tess", backend=backend)
         # Force load
         _ = reader.nlp

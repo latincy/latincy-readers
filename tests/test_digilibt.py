@@ -20,7 +20,7 @@ class TestDigilibLTReader:
         return DigilibLTReader(
             root=digilibt_dir,
             fileids="*.xml",
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
         )
 
     # -------------------------------------------------------------------------

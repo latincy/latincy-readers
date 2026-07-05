@@ -24,12 +24,14 @@ class AnnotationLevel(Enum):
 
     Levels:
         NONE: Raw text only, no spaCy processing
-        TOKENIZE: Tokenization + sentence splitting only
-        BASIC: + lemmatization, POS tagging (default)
+        MINIMAL: Blank model + rule-based sentencizer (punctuation only)
+        TOKENIZE: la_core_web_lg tokenizer + tok2vec + senter (neural sentence segmentation)
+        BASIC: + lemmatization, POS tagging
         FULL: + NER, dependency parsing
     """
 
     NONE = "none"
+    MINIMAL = "minimal"
     TOKENIZE = "tokenize"
     BASIC = "basic"
     FULL = "full"
@@ -190,14 +192,24 @@ def create_pipeline(
     if level == AnnotationLevel.NONE and enable is None and disable is None:
         return None
 
-    if level == AnnotationLevel.TOKENIZE and enable is None and disable is None:
-        # Minimal pipeline: just tokenization and sentence splitting
+    if level == AnnotationLevel.MINIMAL and enable is None and disable is None:
+        # Blank model + rule-based sentencizer — no model load required
         nlp = spacy.blank(lang)
         if lang == "grc":
             # Greek uses ; as question mark and · (ano teleia) as a pause
             nlp.add_pipe("sentencizer", config={"punct_chars": [".", ";", "·", ":"]})
         else:
             nlp.add_pipe("sentencizer")
+        nlp.max_length = 2_500_000
+        return nlp
+
+    if level == AnnotationLevel.TOKENIZE and enable is None and disable is None:
+        # la_core_web_lg tokenizer + tok2vec + senter only — neural sentence segmentation
+        nlp = spacy.load(model_name)
+        backbone = _resolve_backbone(nlp.pipe_names)
+        to_disable = [p for p in nlp.pipe_names if p not in backbone]
+        if to_disable:
+            nlp.select_pipes(disable=to_disable)
         nlp.max_length = 2_500_000
         return nlp
 
