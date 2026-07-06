@@ -13,10 +13,10 @@ import re
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, TYPE_CHECKING
+from typing import Any, Iterator, TYPE_CHECKING
 
 from latincyreaders.core.base import BaseCorpusReader, AnnotationLevel
-from latincyreaders.core.download import DownloadableCorpusMixin
+from latincyreaders.core.download import DownloadableCorpusMixin, LATINCY_DATA
 from latincyreaders.nlp.pipeline import mark_newlines_from_spans
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
 
     # Pin to a specific corpus release for reproducibility. Override per-instance
     # with corpus_version=, or set TESSERAE_PATH to use a local checkout.
-    CORPUS_VERSION = "v0.5"
+    CORPUS_VERSION = "v0.6"
 
     def __init__(
         self,
@@ -83,6 +83,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
         annotation_level: AnnotationLevel = AnnotationLevel.FULL,
         auto_download: bool = True,
         corpus_version: str | None = None,
+        local_metadata: Path | str | None = None,
         cache: bool = True,
         cache_maxsize: int = 128,
         model_name: str = "la_core_web_lg",
@@ -102,6 +103,12 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                 ``CORPUS_VERSION``. Only affects a fresh download; if a corpus
                 is already present at the target location, that copy is used and
                 a warning is issued on version mismatch.
+            local_metadata: Path to a local JSON metadata file with private
+                annotations. Fields are merged into corpus metadata as fill-only
+                (public values take precedence). Defaults to
+                ``~/latincy_data/lat_text_tesserae_local.json`` if that file
+                exists, so it survives corpus re-downloads. Pass explicitly to
+                use any path (e.g. ``~/Desktop/metadata/metadata.json``).
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
             model_name: Name of the spaCy model to load for BASIC/FULL levels.
@@ -117,8 +124,14 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
             )
             self._warn_on_version_mismatch(root)
 
+        if local_metadata is None:
+            default_local = LATINCY_DATA / (self.DEFAULT_SUBDIR + "_local.json")
+            if default_local.exists():
+                local_metadata = default_local
+
         super().__init__(
             root, fileids, encoding, annotation_level,
+            local_metadata=local_metadata,
             cache=cache, cache_maxsize=cache_maxsize,
             model_name=model_name, lang=lang,
             **kwargs,
@@ -158,6 +171,21 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
     def _default_file_pattern(cls) -> str:
         """Tesserae files use .tess extension (under the repo's texts/ dir)."""
         return "**/*.tess"
+
+    def _load_metadata(self) -> dict[str, dict[str, Any]]:
+        """Load metadata and normalize bare-filename keys to texts/<filename>.
+
+        External metadata files (including local) use bare filenames as keys
+        (e.g. ``virgil.aeneid.tess``) while fileids are rooted at the corpus
+        directory (``texts/virgil.aeneid.tess``). This normalizes both forms
+        so lookups always succeed.
+        """
+        raw = super()._load_metadata()
+        normalized: dict[str, Any] = {}
+        for key, meta in raw.items():
+            normalized_key = key if "/" in key else f"texts/{key}"
+            normalized[normalized_key] = meta
+        return normalized
 
     def _parse_lines(self, text: str) -> Iterator[TesseraeLine]:
         """Parse citation-text pairs from Tesserae format.
