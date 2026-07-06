@@ -7,6 +7,7 @@ that can be cloned from GitHub repositories.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -69,13 +70,41 @@ class DownloadableCorpusMixin:
         return LATINCY_DATA / cls.DEFAULT_SUBDIR
 
     @classmethod
+    def _latest_remote_version(cls) -> str | None:
+        """Query the remote for the latest semver tag.
+
+        Returns the highest version tag (e.g. ``"v0.7"``), or None if the
+        remote is unreachable, git is unavailable, or no semver tags exist.
+        Times out after 5 seconds to avoid blocking on a slow network.
+        """
+        try:
+            result = subprocess.run(
+                ["git", "ls-remote", "--tags", cls.CORPUS_URL],
+                capture_output=True, text=True, check=True, timeout=5,
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+            return None
+
+        tags = re.findall(r"refs/tags/(v[\d.]+)$", result.stdout, re.MULTILINE)
+        if not tags:
+            return None
+
+        def _version_key(tag: str) -> tuple[int, ...]:
+            return tuple(int(p) for p in re.findall(r"\d+", tag))
+
+        return max(tags, key=_version_key)
+
+    @classmethod
     def _get_default_root(
         cls, auto_download: bool = True, ref: str | None = None
     ) -> Path:
         """Get the corpus root, downloading if necessary.
 
+        When the corpus already exists and auto_download is True, checks the
+        remote for a newer release and offers to update.
+
         Args:
-            auto_download: If True and corpus not found, offer to download.
+            auto_download: If True, offer to download or update the corpus.
             ref: git tag/branch to clone. Defaults to CORPUS_VERSION.
 
         Returns:
@@ -87,6 +116,14 @@ class DownloadableCorpusMixin:
         root = cls.default_root()
 
         if root.exists() and any(root.glob(cls._FILE_CHECK_PATTERN)):
+            if auto_download:
+                installed = cls.installed_version(root)
+                latest = cls._latest_remote_version()
+                if installed and latest and latest != installed:
+                    print(f"New {cls.__name__} corpus release: {latest} (installed: {installed})")
+                    response = input("Update? [y/N]: ").strip().lower()
+                    if response in ("y", "yes"):
+                        cls.download(root, ref=latest)
             return root
 
         if not auto_download:
@@ -115,43 +152,55 @@ class DownloadableCorpusMixin:
     def download(
         cls, destination: Path | None = None, ref: str | None = None
     ) -> Path:
-        """Download the corpus from GitHub.
+        """Download or update the corpus from GitHub.
+
+        If the corpus is not yet present, clones it. If it is already a git
+        checkout, fetches the requested ref and checks it out — preserving any
+        untracked or gitignored files (e.g. ``metadata_local.json``).
 
         Args:
-            destination: Where to clone the corpus. Defaults to default_root().
-            ref: git tag/branch to clone. Defaults to CORPUS_VERSION. When set,
-                the clone is pinned to that ref for reproducibility.
+            destination: Where to clone/update the corpus. Defaults to default_root().
+            ref: git tag or branch to fetch. Defaults to CORPUS_VERSION.
 
         Returns:
-            Path to the downloaded corpus.
+            Path to the corpus.
 
         Raises:
-            RuntimeError: If git clone fails or git is not installed.
+            RuntimeError: If git fails or is not installed.
         """
         if destination is None:
             destination = cls.default_root()
 
         destination = Path(destination)
-
-        if destination.exists():
-            print(f"Corpus already exists at: {destination}")
-            return destination
-
-        destination.parent.mkdir(parents=True, exist_ok=True)
-
         pin = ref or cls.CORPUS_VERSION
-        cmd = ["git", "clone", "--depth", "1"]
-        if pin:
-            cmd += ["--branch", pin]
-        cmd += [cls.CORPUS_URL, str(destination)]
 
-        pin_note = f" at {pin}" if pin else ""
-        print(f"Cloning {cls.__name__} corpus{pin_note} to {destination}...")
         try:
-            subprocess.run(cmd, check=True)
-            print(f"Successfully downloaded to {destination}")
+            if destination.exists() and (destination / ".git").exists():
+                # Update existing checkout — leaves gitignored files intact
+                pin_note = f" to {pin}" if pin else ""
+                print(f"Updating {cls.__name__} corpus{pin_note} at {destination}...")
+                fetch_cmd = ["git", "-C", str(destination), "fetch", "--depth", "1", "origin"]
+                if pin:
+                    fetch_cmd.append(pin)
+                subprocess.run(fetch_cmd, check=True)
+                subprocess.run(
+                    ["git", "-C", str(destination), "checkout", "FETCH_HEAD"],
+                    check=True,
+                )
+                print("Update complete.")
+            else:
+                # Fresh clone
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                cmd = ["git", "clone", "--depth", "1"]
+                if pin:
+                    cmd += ["--branch", pin]
+                cmd += [cls.CORPUS_URL, str(destination)]
+                pin_note = f" at {pin}" if pin else ""
+                print(f"Cloning {cls.__name__} corpus{pin_note} to {destination}...")
+                subprocess.run(cmd, check=True)
+                print(f"Successfully cloned to {destination}")
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to clone repository: {e}") from e
+            raise RuntimeError(f"git operation failed: {e}") from e
         except FileNotFoundError:
             raise RuntimeError(
                 "git not found. Please install git or download manually from "

@@ -60,7 +60,8 @@ class BaseCorpusReader(ABC):
         fileids: str | None = None,
         encoding: str = "utf-8",
         annotation_level: AnnotationLevel = AnnotationLevel.FULL,
-        metadata_pattern: str = "metadata/*.json",
+        metadata_pattern: str = "**/metadata/*.json",
+        local_metadata: "Path | str | None" = None,
         cache: bool = True,
         cache_maxsize: int = 128,
         model_name: str = "la_core_web_lg",
@@ -79,7 +80,13 @@ class BaseCorpusReader(ABC):
             encoding: Text encoding for reading files.
             annotation_level: How much NLP annotation to apply. Ignored when
                 *enable* or *disable* is provided (except NONE/TOKENIZE).
-            metadata_pattern: Glob pattern for metadata JSON files. Set to None to disable.
+            metadata_pattern: Glob pattern for metadata JSON files, relative to the corpus
+                root. Defaults to ``**/metadata/*.json`` to find a ``metadata/`` folder at
+                any depth. Set to None to disable.
+            local_metadata: Path to a local JSON metadata file that will be merged with
+                corpus metadata. Local fields are added only for keys not already present
+                in the public metadata (fill-only, never overrides). Useful for private
+                annotations that cannot be committed to the public corpus.
             cache: If True (default), cache processed Doc objects for reuse.
             cache_maxsize: Maximum number of documents to cache (default 128).
             model_name: Name of the spaCy model to load for BASIC/FULL levels.
@@ -111,6 +118,7 @@ class BaseCorpusReader(ABC):
         self._disable = disable
         self._nlp: Language | None = None  # Lazy loaded
         self._metadata_pattern = metadata_pattern
+        self._local_metadata_path = Path(local_metadata) if local_metadata else None
         self._metadata: dict[str, dict[str, Any]] | None = None  # Lazy loaded
 
         # Caching
@@ -210,27 +218,40 @@ class BaseCorpusReader(ABC):
     def _load_metadata(self) -> dict[str, dict[str, Any]]:
         """Load and aggregate metadata from JSON files.
 
-        Searches for JSON files matching metadata_pattern and merges them
-        by fileid key. Later files override earlier ones for duplicate keys.
+        Resolution policy: first file wins per field. Files are processed in
+        sorted order, so ``metadata.json`` takes precedence over
+        ``metadata_local.json`` for any field present in both. The local_metadata
+        path (if set) is also merged with the same fill-only semantics.
 
         Returns:
             Dict mapping fileid -> metadata dict.
         """
-        if self._metadata_pattern is None:
-            return {}
-
         merged: dict[str, dict[str, Any]] = {}
 
-        for json_file in sorted(self._root.glob(self._metadata_pattern)):
+        if self._metadata_pattern is not None:
+            for json_file in sorted(self._root.glob(self._metadata_pattern)):
+                try:
+                    data = json.loads(json_file.read_text(encoding=self._encoding))
+                    if isinstance(data, dict):
+                        for fileid, meta in data.items():
+                            if isinstance(meta, dict):
+                                entry = merged.setdefault(fileid, {})
+                                for k, v in meta.items():
+                                    entry.setdefault(k, v)  # first file wins per field
+                except (json.JSONDecodeError, OSError):
+                    continue
+
+        if self._local_metadata_path is not None and self._local_metadata_path.exists():
             try:
-                data = json.loads(json_file.read_text(encoding=self._encoding))
+                data = json.loads(self._local_metadata_path.read_text(encoding=self._encoding))
                 if isinstance(data, dict):
-                    for fileid, meta in data.items():
-                        if isinstance(meta, dict):
-                            merged.setdefault(fileid, {}).update(meta)
+                    for fileid, local_meta in data.items():
+                        if isinstance(local_meta, dict):
+                            entry = merged.setdefault(fileid, {})
+                            for k, v in local_meta.items():
+                                entry.setdefault(k, v)  # fill only, never override
             except (json.JSONDecodeError, OSError):
-                # Skip malformed or unreadable files
-                continue
+                pass
 
         return merged
 
