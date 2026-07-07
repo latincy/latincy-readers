@@ -9,12 +9,25 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 
 # Default data directory for latincy-readers
 LATINCY_DATA = Path.home() / "latincy_data"
 
+
+
+def _ask(prompt: str) -> str:
+    """Prompt on a TTY; answer "n" (the safe default) when stdin is not interactive.
+
+    Both prompts here default to No, so a headless caller (CI, a render pipeline,
+    a cron job) gets the no-op path instead of an EOFError crash.
+    """
+    if not sys.stdin.isatty():
+        print(f"{prompt} n  (non-interactive: defaulting to No)")
+        return "n"
+    return input(prompt).strip().lower()
 
 class DownloadableCorpusMixin:
     """Mixin providing auto-download functionality for corpus readers.
@@ -121,7 +134,7 @@ class DownloadableCorpusMixin:
                 latest = cls._latest_remote_version()
                 if installed and latest and latest != installed:
                     print(f"New {cls.__name__} corpus release: {latest} (installed: {installed})")
-                    response = input("Update? [y/N]: ").strip().lower()
+                    response = _ask("Update? [y/N]: ")
                     if response in ("y", "yes"):
                         cls.download(root, ref=latest)
             return root
@@ -137,7 +150,7 @@ class DownloadableCorpusMixin:
         pin = ref or cls.CORPUS_VERSION
         pin_note = f" ({pin})" if pin else ""
         print(f"{cls.__name__} corpus not found at {root}")
-        response = input(f"Download{pin_note} from GitHub? [y/N]: ").strip().lower()
+        response = _ask(f"Download{pin_note} from GitHub? [y/N]: ")
 
         if response in ("y", "yes"):
             cls.download(root, ref=ref)
