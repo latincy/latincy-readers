@@ -11,8 +11,8 @@ authors:
 repository-code: "https://github.com/latincy/latincy-readers"
 url: "https://pypi.org/project/latincy-readers/"
 license: MIT
-version: "1.6.0"
-date-released: "2026-06-08"
+version: "1.7.0"
+date-released: "2026-07-09"
 keywords:
   - latin
   - ancient-greek
