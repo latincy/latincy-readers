@@ -97,16 +97,26 @@ class TestDownloadMethod:
         MockCorpusReader.download(deep_path)
         assert deep_path.parent.exists()
 
-    def test_download_skips_existing(self, tmp_path, capsys):
-        """download() skips if directory already exists."""
+    def test_download_updates_existing_git_checkout(self, tmp_path, monkeypatch, capsys):
+        """download() updates an existing git checkout via fetch, not a re-clone.
+
+        Preserves gitignored/untracked files (e.g. metadata_local.json) that a
+        destructive re-clone would wipe.
+        """
         existing = tmp_path / "existing"
-        existing.mkdir()
+        (existing / ".git").mkdir(parents=True)
+
+        calls: list[list[str]] = []
+        monkeypatch.setattr("subprocess.run", lambda cmd, *a, **kw: calls.append(cmd))
 
         result = MockCorpusReader.download(existing)
         assert result == existing
 
+        # Fetched + checked out FETCH_HEAD; did not clone.
+        assert any("fetch" in cmd for cmd in calls)
+        assert not any("clone" in cmd for cmd in calls)
         captured = capsys.readouterr()
-        assert "already exists" in captured.out
+        assert "Updating" in captured.out
 
     def test_download_uses_default_root_when_none(self, tmp_path, monkeypatch):
         """download(None) uses default_root()."""
@@ -126,7 +136,7 @@ class TestDownloadMethod:
         monkeypatch.setattr("subprocess.run", mock_run)
 
         dest = tmp_path / "new_corpus"
-        with pytest.raises(RuntimeError, match="Failed to clone"):
+        with pytest.raises(RuntimeError, match="git operation failed"):
             MockCorpusReader.download(dest)
 
     def test_download_git_not_installed(self, tmp_path, monkeypatch):
@@ -208,6 +218,9 @@ class TestInteractiveDownload:
         corpus_dir = tmp_path / "corpus"
         monkeypatch.setenv("TEST_CORPUS_PATH", str(corpus_dir))
 
+        # _ask() short-circuits to "n" off a TTY; make stdin look interactive
+        # so the mocked input() is actually consulted.
+        monkeypatch.setattr("sys.stdin.isatty", lambda: True)
         # Mock input to return 'y'
         monkeypatch.setattr("builtins.input", lambda _: "y")
         # Mock subprocess.run to succeed
@@ -221,6 +234,7 @@ class TestInteractiveDownload:
         corpus_dir = tmp_path / "corpus"
         monkeypatch.setenv("TEST_CORPUS_PATH", str(corpus_dir))
 
+        monkeypatch.setattr("sys.stdin.isatty", lambda: True)
         monkeypatch.setattr("builtins.input", lambda _: "yes")
         monkeypatch.setattr("subprocess.run", lambda *a, **kw: None)
 
@@ -232,6 +246,7 @@ class TestInteractiveDownload:
         corpus_dir = tmp_path / "corpus"
         monkeypatch.setenv("TEST_CORPUS_PATH", str(corpus_dir))
 
+        monkeypatch.setattr("sys.stdin.isatty", lambda: True)
         monkeypatch.setattr("builtins.input", lambda _: "n")
 
         with pytest.raises(FileNotFoundError, match="Download manually"):
@@ -242,6 +257,7 @@ class TestInteractiveDownload:
         corpus_dir = tmp_path / "corpus"
         monkeypatch.setenv("TEST_CORPUS_PATH", str(corpus_dir))
 
+        monkeypatch.setattr("sys.stdin.isatty", lambda: True)
         monkeypatch.setattr("builtins.input", lambda _: "")
 
         with pytest.raises(FileNotFoundError, match="Download manually"):

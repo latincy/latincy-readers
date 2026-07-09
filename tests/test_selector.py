@@ -103,13 +103,15 @@ class TestFileSelectorWhere:
     @pytest.fixture
     def reader_with_metadata(self, tmp_path):
         """Create reader with files and metadata."""
-        # Create test files
-        (tmp_path / "vergil.aeneid.tess").write_text("<verg. aen. 1.1> Arma virumque cano\n")
-        (tmp_path / "vergil.eclogues.tess").write_text("<verg. ecl. 1.1> Tityre tu patulae\n")
-        (tmp_path / "ovid.metamorphoses.tess").write_text("<ov. met. 1.1> In nova fert animus\n")
-        (tmp_path / "catullus.carmina.tess").write_text("<catull. 1.1> Cui dono lepidum\n")
+        # Create test files under texts/ (the real Tesserae layout)
+        texts_dir = tmp_path / "texts"
+        texts_dir.mkdir()
+        (texts_dir / "vergil.aeneid.tess").write_text("<verg. aen. 1.1> Arma virumque cano\n")
+        (texts_dir / "vergil.eclogues.tess").write_text("<verg. ecl. 1.1> Tityre tu patulae\n")
+        (texts_dir / "ovid.metamorphoses.tess").write_text("<ov. met. 1.1> In nova fert animus\n")
+        (texts_dir / "catullus.carmina.tess").write_text("<catull. 1.1> Cui dono lepidum\n")
 
-        # Create metadata
+        # Create metadata (bare filename keys, normalized to texts/<name>)
         metadata_dir = tmp_path / "metadata"
         metadata_dir.mkdir()
         import json
@@ -122,7 +124,7 @@ class TestFileSelectorWhere:
 
         return TesseraeReader(
             root=tmp_path,
-            fileids="*.tess",
+            fileids="**/*.tess",
             annotation_level=AnnotationLevel.NONE,
         )
 
@@ -196,9 +198,11 @@ class TestFileSelectorWhereBetween:
     @pytest.fixture
     def reader_with_dates(self, tmp_path):
         """Create reader with dated files."""
-        (tmp_path / "early.tess").write_text("<early. 1> Early text\n")
-        (tmp_path / "middle.tess").write_text("<middle. 1> Middle text\n")
-        (tmp_path / "late.tess").write_text("<late. 1> Late text\n")
+        texts_dir = tmp_path / "texts"
+        texts_dir.mkdir()
+        (texts_dir / "early.tess").write_text("<early. 1> Early text\n")
+        (texts_dir / "middle.tess").write_text("<middle. 1> Middle text\n")
+        (texts_dir / "late.tess").write_text("<late. 1> Late text\n")
 
         metadata_dir = tmp_path / "metadata"
         metadata_dir.mkdir()
@@ -211,7 +215,7 @@ class TestFileSelectorWhereBetween:
 
         return TesseraeReader(
             root=tmp_path,
-            fileids="*.tess",
+            fileids="**/*.tess",
             annotation_level=AnnotationLevel.NONE,
         )
 
@@ -220,15 +224,15 @@ class TestFileSelectorWhereBetween:
         selector = reader_with_dates.select().where_between("date", -100, 0)
         result = selector.to_list()
         assert len(result) == 2
-        assert "early.tess" in result
-        assert "middle.tess" in result
+        assert "texts/early.tess" in result
+        assert "texts/middle.tess" in result
 
     def test_where_between_any_field(self, reader_with_dates):
         """where_between() works on any numeric field."""
         selector = reader_with_dates.select().where_between("lines", 75, 150)
         result = selector.to_list()
         assert len(result) == 1
-        assert "middle.tess" in result
+        assert "texts/middle.tess" in result
 
     def test_where_between_missing_field(self, reader_with_dates):
         """Files missing the field are excluded."""
@@ -243,9 +247,11 @@ class TestFileSelectorDateRange:
     @pytest.fixture
     def reader_with_dates(self, tmp_path):
         """Create reader with dated files."""
-        (tmp_path / "republic.tess").write_text("<rep. 1> Republic era\n")
-        (tmp_path / "augustan.tess").write_text("<aug. 1> Augustan era\n")
-        (tmp_path / "imperial.tess").write_text("<imp. 1> Imperial era\n")
+        texts_dir = tmp_path / "texts"
+        texts_dir.mkdir()
+        (texts_dir / "republic.tess").write_text("<rep. 1> Republic era\n")
+        (texts_dir / "augustan.tess").write_text("<aug. 1> Augustan era\n")
+        (texts_dir / "imperial.tess").write_text("<imp. 1> Imperial era\n")
 
         metadata_dir = tmp_path / "metadata"
         metadata_dir.mkdir()
@@ -258,7 +264,7 @@ class TestFileSelectorDateRange:
 
         return TesseraeReader(
             root=tmp_path,
-            fileids="*.tess",
+            fileids="**/*.tess",
             annotation_level=AnnotationLevel.NONE,
         )
 
@@ -267,8 +273,8 @@ class TestFileSelectorDateRange:
         selector = reader_with_dates.select().date_range(-50, 50)
         result = selector.to_list()
         assert len(result) == 2
-        assert "republic.tess" in result
-        assert "augustan.tess" in result
+        assert "texts/republic.tess" in result
+        assert "texts/augustan.tess" in result
 
     def test_date_range_is_convenience_for_where_between(self, reader_with_dates):
         """date_range() is equivalent to where_between('date', ...)."""
@@ -317,8 +323,10 @@ class TestFileSelectorIntegration:
     @pytest.fixture
     def reader_with_metadata(self, tmp_path):
         """Create reader with multiple files and metadata."""
-        (tmp_path / "vergil.aeneid.tess").write_text("<verg. aen. 1.1> Arma virumque cano\n")
-        (tmp_path / "ovid.metamorphoses.tess").write_text("<ov. met. 1.1> In nova fert animus\n")
+        texts_dir = tmp_path / "texts"
+        texts_dir.mkdir()
+        (texts_dir / "vergil.aeneid.tess").write_text("<verg. aen. 1.1> Arma virumque cano\n")
+        (texts_dir / "ovid.metamorphoses.tess").write_text("<ov. met. 1.1> In nova fert animus\n")
 
         metadata_dir = tmp_path / "metadata"
         metadata_dir.mkdir()
@@ -330,7 +338,7 @@ class TestFileSelectorIntegration:
 
         return TesseraeReader(
             root=tmp_path,
-            fileids="*.tess",
+            fileids="**/*.tess",
             annotation_level=AnnotationLevel.TOKENIZE,
         )
 
@@ -374,10 +382,12 @@ class TestFileSelectorChaining:
     @pytest.fixture
     def reader_with_metadata(self, tmp_path):
         """Create reader with complex test data."""
-        (tmp_path / "vergil.aeneid.tess").write_text("<verg. aen. 1.1> Arma virumque\n")
-        (tmp_path / "vergil.eclogues.tess").write_text("<verg. ecl. 1.1> Tityre\n")
-        (tmp_path / "ovid.metamorphoses.tess").write_text("<ov. met. 1.1> In nova\n")
-        (tmp_path / "lucan.pharsalia.tess").write_text("<luc. phar. 1.1> Bella per\n")
+        texts_dir = tmp_path / "texts"
+        texts_dir.mkdir()
+        (texts_dir / "vergil.aeneid.tess").write_text("<verg. aen. 1.1> Arma virumque\n")
+        (texts_dir / "vergil.eclogues.tess").write_text("<verg. ecl. 1.1> Tityre\n")
+        (texts_dir / "ovid.metamorphoses.tess").write_text("<ov. met. 1.1> In nova\n")
+        (texts_dir / "lucan.pharsalia.tess").write_text("<luc. phar. 1.1> Bella per\n")
 
         metadata_dir = tmp_path / "metadata"
         metadata_dir.mkdir()
@@ -391,7 +401,7 @@ class TestFileSelectorChaining:
 
         return TesseraeReader(
             root=tmp_path,
-            fileids="*.tess",
+            fileids="**/*.tess",
             annotation_level=AnnotationLevel.NONE,
         )
 
@@ -404,8 +414,8 @@ class TestFileSelectorChaining:
         )
         result = selector.to_list()
         assert len(result) == 2
-        assert "vergil.aeneid.tess" in result
-        assert "ovid.metamorphoses.tess" in result
+        assert "texts/vergil.aeneid.tess" in result
+        assert "texts/ovid.metamorphoses.tess" in result
 
     def test_fluent_api_returns_new_selector(self, reader_with_metadata):
         """Each method returns a new FileSelector (immutable chaining)."""
