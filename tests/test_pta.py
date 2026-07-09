@@ -17,7 +17,7 @@ def reader(pta_dir):
     return PTAReader(
         root=pta_dir,
         fileids="*.xml",
-        annotation_level=AnnotationLevel.TOKENIZE,
+        annotation_level=AnnotationLevel.MINIMAL,
     )
 
 
@@ -27,7 +27,7 @@ def reader_lat(pta_dir):
     return PTAReader(
         root=pta_dir,
         fileids="*lat*.xml",
-        annotation_level=AnnotationLevel.TOKENIZE,
+        annotation_level=AnnotationLevel.MINIMAL,
     )
 
 
@@ -37,7 +37,7 @@ def reader_grc(pta_dir):
     return PTAReader(
         root=pta_dir,
         fileids="*grc*.xml",
-        annotation_level=AnnotationLevel.TOKENIZE,
+        annotation_level=AnnotationLevel.MINIMAL,
         model_name="grc_dep_treebanks_trf",
         lang="grc",
     )
@@ -49,7 +49,7 @@ def reader_minimal(pta_dir):
     return PTAReader(
         root=pta_dir,
         fileids="pta9999*.xml",
-        annotation_level=AnnotationLevel.TOKENIZE,
+        annotation_level=AnnotationLevel.MINIMAL,
     )
 
 

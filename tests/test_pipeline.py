@@ -19,11 +19,21 @@ class TestAnnotationLevel:
         nlp = create_pipeline(AnnotationLevel.NONE)
         assert nlp is None
 
-    def test_tokenize_level(self):
-        """TOKENIZE level creates minimal pipeline."""
-        nlp = create_pipeline(AnnotationLevel.TOKENIZE)
+    def test_minimal_level(self):
+        """MINIMAL level creates blank model with rule-based sentencizer."""
+        nlp = create_pipeline(AnnotationLevel.MINIMAL)
         assert nlp is not None
         assert "sentencizer" in nlp.pipe_names
+
+    def test_tokenize_level(self):
+        """TOKENIZE level loads la_core_web_lg with only tok2vec + senter."""
+        nlp = create_pipeline(AnnotationLevel.TOKENIZE)
+        assert nlp is not None
+        assert "senter" in nlp.pipe_names
+        assert "sentencizer" not in nlp.pipe_names
+        assert "tagger" not in nlp.pipe_names
+        assert "morphologizer" not in nlp.pipe_names
+        assert "ner" not in nlp.pipe_names
 
     def test_basic_level(self):
         """BASIC level loads model without NER/parser."""
