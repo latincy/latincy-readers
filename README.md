@@ -1,8 +1,13 @@
 <img src="assets/latincy-readers-logo.jpg" alt="LatinCy Readers" width="400">
 
+[![PyPI version](https://img.shields.io/pypi/v/latincy-readers.svg)](https://pypi.org/project/latincy-readers/)
+[![Python versions](https://img.shields.io/pypi/pyversions/latincy-readers.svg)](https://pypi.org/project/latincy-readers/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 Corpus readers for Latin and Ancient Greek texts with [LatinCy](https://github.com/diyclassics/latincy) NLP integration.
 
-Version 1.6.2; Python 3.10+; LatinCy 3.9.0+
+Python 3.10+ · LatinCy 3.9.6+
 
 ## Installation
 
@@ -25,13 +30,13 @@ LatinCy NLP models are hosted on Hugging Face and installed separately (mirrorin
 
 ```bash
 # Latin model (la_core_web_lg)
-pip install https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.9.0-py3-none-any.whl
+pip install https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.9.6-py3-none-any.whl
 
 # Ancient Greek model (grc_dep_web_lg)
 pip install https://huggingface.co/latincy/grc_dep_web_lg/resolve/main/grc_dep_web_lg-3.8.1-py3-none-any.whl
 ```
 
-You can skip model installation if you only need raw text iteration or `AnnotationLevel.TOKENIZE`.
+You can skip model installation if you only need raw text iteration (`AnnotationLevel.NONE`) or rule-based sentence splitting (`AnnotationLevel.MINIMAL`). All other levels require a model.
 
 ## Quick Start
 

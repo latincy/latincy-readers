@@ -92,7 +92,7 @@ class TestCSELReaderDocs:
         return CSELReader(
             root=csel_dir,
             fileids="*.opp-lat1.xml",
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
         )
 
     def test_docs_yields_spacy_docs(self, reader):
@@ -139,7 +139,7 @@ class TestCSELReaderChapters:
         return CSELReader(
             root=csel_dir,
             fileids="*.opp-lat1.xml",
-            annotation_level=AnnotationLevel.TOKENIZE,
+            annotation_level=AnnotationLevel.MINIMAL,
         )
 
     def test_chapter_citations_use_subtype_labels(self, reader):
