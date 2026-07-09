@@ -7,11 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-09
+
 ### Added
 
 - **`AnnotationLevel.MINIMAL`** — new level between `NONE` and `TOKENIZE`. Uses a
   blank spaCy model with a rule-based sentencizer (punctuation only); no model
   download required. Replaces the old `TOKENIZE` behavior.
+- **Local metadata merge.** `BaseCorpusReader` accepts a `local_metadata` path to
+  a private JSON file whose fields are merged fill-only (public corpus fields
+  always win). `TesseraeReader` auto-detects
+  `~/latincy_data/lat_text_tesserae_local.json`, so private annotations survive
+  corpus re-downloads.
+- **Version-aware corpus updates.** On init, a reader checks the remote for a
+  newer release tag and offers to update (5s timeout, silent on failure).
+  `installed_version()` / the `corpus_version` property report the git tag or
+  commit actually on disk, so an analysis can record exactly which corpus
+  produced it.
 
 ### Changed
 
@@ -20,6 +32,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for Latin than the previous rule-based sentencizer and is the minimum
   recommended level for any sentence-aware work.
 - Minimum recommended LatinCy model bumped to **3.9.6**.
+- **Metadata discovery** now globs `**/metadata/*.json` by default, so metadata
+  is found regardless of corpus nesting depth. Resolution is first-file-wins per
+  field across all matched files. `TesseraeReader` normalizes bare-filename
+  metadata keys to `texts/<name>` to match its `texts/`-nested file IDs.
+- **`download()` updates in place.** An existing git checkout is refreshed with
+  `git fetch` + checkout instead of being skipped, preserving untracked and
+  gitignored files (e.g. `metadata_local.json`) across updates. The Tesserae
+  corpus pin moves **v0.5 → v0.6**.
+- Corpus download/update prompts default to **No** when stdin is not a TTY, so
+  headless callers (CI, render pipelines, cron) get the no-op path instead of an
+  `EOFError`.
 
 ## [1.6.2] - 2026-06-20
 
