@@ -73,7 +73,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
 
     # Pin to a specific corpus release for reproducibility. Override per-instance
     # with corpus_version=, or set TESSERAE_PATH to use a local checkout.
-    CORPUS_VERSION = "v0.6"
+    CORPUS_VERSION = "v0.6.1"
 
     def __init__(
         self,
