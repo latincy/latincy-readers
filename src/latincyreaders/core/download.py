@@ -18,13 +18,38 @@ LATINCY_DATA = Path.home() / "latincy_data"
 
 
 
+def _in_notebook() -> bool:
+    """True when running inside an IPython/Jupyter kernel.
+
+    In a kernel, ``builtins.input`` is replaced by ipykernel with a routine
+    that forwards the prompt to the frontend and *blocks* until the user
+    answers — which hangs the kernel on "Restart & Run All" (the prompt is
+    easy to miss) and hangs indefinitely under executors that don't service
+    stdin (nbconvert, papermill, VS Code). ``sys.stdin.isatty()`` is not a
+    reliable signal here: ipykernel swaps ``input`` but leaves ``sys.stdin``
+    as whatever the launcher provided, so it varies across frontends.
+    """
+    ip = sys.modules.get("IPython")
+    if ip is None:
+        return False
+    try:
+        shell = ip.get_ipython()
+    except Exception:
+        return False
+    # ZMQInteractiveShell is the kernel (notebook/qtconsole); TerminalInteractiveShell
+    # is a plain REPL, where input() works fine.
+    return shell is not None and shell.__class__.__name__ == "ZMQInteractiveShell"
+
+
 def _ask(prompt: str) -> str:
-    """Prompt on a TTY; answer "n" (the safe default) when stdin is not interactive.
+    """Prompt interactively; answer "n" (the safe default) when we can't.
 
     Both prompts here default to No, so a headless caller (CI, a render pipeline,
-    a cron job) gets the no-op path instead of an EOFError crash.
+    a cron job) gets the no-op path instead of an EOFError crash — and a Jupyter
+    kernel gets the no-op path instead of a blocked ``input()`` (see
+    :func:`_in_notebook`).
     """
-    if not sys.stdin.isatty():
+    if _in_notebook() or not sys.stdin.isatty():
         print(f"{prompt} n  (non-interactive: defaulting to No)")
         return "n"
     return input(prompt).strip().lower()
