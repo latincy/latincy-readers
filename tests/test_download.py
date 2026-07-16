@@ -5,6 +5,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+from latincyreaders.core import download
 from latincyreaders.core.download import DownloadableCorpusMixin, LATINCY_DATA
 
 
@@ -259,6 +260,24 @@ class TestInteractiveDownload:
 
         monkeypatch.setattr("sys.stdin.isatty", lambda: True)
         monkeypatch.setattr("builtins.input", lambda _: "")
+
+        with pytest.raises(FileNotFoundError, match="Download manually"):
+            MockCorpusReader._get_default_root(auto_download=True)
+
+    def test_notebook_never_calls_input(self, tmp_path, monkeypatch):
+        """In a Jupyter kernel, the prompt must default to No without calling
+        input() — a blocked input() hangs the kernel (see _in_notebook)."""
+        corpus_dir = tmp_path / "corpus"
+        monkeypatch.setenv("TEST_CORPUS_PATH", str(corpus_dir))
+
+        # Even with a tty-like stdin, a notebook context must short-circuit.
+        monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+        monkeypatch.setattr(download, "_in_notebook", lambda: True)
+
+        def _boom(_):
+            raise AssertionError("input() was called in a notebook context")
+
+        monkeypatch.setattr("builtins.input", _boom)
 
         with pytest.raises(FileNotFoundError, match="Download manually"):
             MockCorpusReader._get_default_root(auto_download=True)
