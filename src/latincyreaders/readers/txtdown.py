@@ -28,11 +28,19 @@ except ImportError:
 
 # Pattern to strip blockquote markers: leading whitespace, one or more >, optional space
 _BLOCKQUOTE_PREFIX = re.compile(r"^\s*>+\s?")
-# Text-critical markup patterns (West 1973)
+# Text-critical markup patterns (West 1973 / Leiden)
 _CRUX_PATTERN = re.compile(r"†([^†]*)†")   # crux: keep text, strip daggers
-_ADDITION_PATTERN = re.compile(r"<([^<>]*)>")              # addition: keep text, strip <>
+_ADDITION_PATTERN = re.compile(r"<([^<>]*)>")              # addition (scribal omission): keep text, strip <>
 _DELETION_PATTERN = re.compile(r"\{[^}]*\}")               # deletion {}: strip markers AND content
 _EXPANSION_PATTERN = re.compile(r"(\w+)\((\w+)\)")         # expansion M(arcus) → Marcus
+# Lacuna / restoration (Leiden square brackets): physically lost text.
+# ``[Marcus]`` = editor restores lost text (kept + tokenized, flagged is_supplement);
+# ``[- - -]`` / ``[...]`` = unrestored gap (no tokens, recorded as a lacuna).
+# Negative lookahead ``(?!\()`` keeps this off Markdown-style ``[text](link)`` refs.
+_LACUNA_PATTERN = re.compile(r"\[([^\]]*)\](?!\()")
+# An unrestored gap's inner text is only dots / dashes / spaces / ellipsis;
+# anything with real content is treated as an editorial restoration instead.
+_GAP_INNER = re.compile(r"^[\s.\-–—…]*$")
 
 
 def _collect_markup(text: str) -> list[tuple]:
@@ -51,6 +59,14 @@ def _collect_markup(text: str) -> list[tuple]:
         spans.append((m.start(), m.end(), "crux", m.group(0), m.group(1)))
     for m in _ADDITION_PATTERN.finditer(text):
         spans.append((m.start(), m.end(), "addition", m.group(0), m.group(1)))
+    for m in _LACUNA_PATTERN.finditer(text):
+        inner = m.group(1)
+        if _GAP_INNER.match(inner):
+            # unrestored gap: strip entirely, no surviving tokens
+            spans.append((m.start(), m.end(), "lacuna", m.group(0), ""))
+        else:
+            # editorial restoration of lost text: keep the supplied reading
+            spans.append((m.start(), m.end(), "supplement", m.group(0), inner))
     return sorted(spans, key=lambda x: x[0])
 
 
@@ -164,8 +180,10 @@ class TxtdownReader(BaseCorpusReader):
     def _strip_critical_markup(text: str) -> str:
         """Strip text-critical markup, preserving the enclosed text.
 
-        Handles cruxes (†text†) and editorial additions (<text>).
-        The enclosed text is kept; only the markers are removed.
+        Handles cruxes (†text†), editorial additions (<text>), and Leiden
+        square brackets: restorations ([Marcus] → Marcus) keep the supplied
+        reading, while unrestored gaps ([- - -], [...]) are removed entirely.
+        The enclosed text is kept for everything except deletions and gaps.
 
         Args:
             text: Text possibly containing critical markup.
@@ -177,6 +195,10 @@ class TxtdownReader(BaseCorpusReader):
         text = _EXPANSION_PATTERN.sub(r"\1\2", text)    # M(arcus) → Marcus
         text = _CRUX_PATTERN.sub(r"\1", text)            # †text† → text
         text = _ADDITION_PATTERN.sub(r"\1", text)        # <text> → text
+        # Leiden [ ]: drop unrestored gaps, keep restored readings.
+        text = _LACUNA_PATTERN.sub(
+            lambda m: "" if _GAP_INNER.match(m.group(1)) else m.group(1), text
+        )
         return text
 
     @staticmethod
@@ -319,10 +341,13 @@ class TxtdownReader(BaseCorpusReader):
 
         Uses the markup positions collected before stripping to compute
         where each occurrence lands in the NLP-processed doc, then sets
-        Token._.is_crux / is_addition / is_expansion accordingly.
+        Token._.is_crux / is_addition / is_expansion / is_supplement accordingly.
 
-        Deletions ({}) have no tokens in the Doc; they are recorded in
-        doc._.textcrit["deletions"] without a span key.
+        Deletions ({}) and unrestored lacunae ([- - -], [...]) have no tokens
+        in the Doc. Deletions are recorded in doc._.textcrit["deletions"];
+        lacunae in doc._.textcrit["lacunae"] with an ``after`` token-index
+        anchor (or None if the gap opens the section) so the reader can place a
+        marker without a surviving token to hang it on.
 
         Args:
             doc: The spaCy Doc built from the stripped clean text.
@@ -332,6 +357,7 @@ class TxtdownReader(BaseCorpusReader):
         """
         textcrit: dict[str, list] = {
             "cruxes": [], "additions": [], "expansions": [], "deletions": [],
+            "supplements": [], "lacunae": [],
         }
         offset = 0
 
@@ -342,6 +368,19 @@ class TxtdownReader(BaseCorpusReader):
                 textcrit["deletions"].append({
                     "original": original,
                     "text": original[1:-1],  # strip enclosing { }
+                })
+            elif mtype == "lacuna":
+                # Unrestored gap: no surviving tokens. Anchor after the last
+                # token that starts before the gap position.
+                after = None
+                for token in doc:
+                    if token.idx < clean_start:
+                        after = token.i
+                    else:
+                        break
+                textcrit["lacunae"].append({
+                    "original": original,
+                    "after": after,
                 })
             else:
                 clean_end = clean_start + len(replacement)
@@ -364,6 +403,11 @@ class TxtdownReader(BaseCorpusReader):
                     if span:
                         for token in span:
                             token._.is_expansion = True
+                elif mtype == "supplement":
+                    textcrit["supplements"].append(entry)
+                    if span:
+                        for token in span:
+                            token._.is_supplement = True
 
             offset += len(original) - len(replacement)
 

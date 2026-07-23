@@ -438,13 +438,14 @@ class TestTxtdownCriticalMarkup:
         all_text = " ".join(texts)
         assert "interpolatione" not in all_text
 
-    # -- lacunae [X] left alone -----------------------------------------------
+    # -- lacunae [X] stripped (Leiden square brackets) ------------------------
 
-    def test_lacuna_brackets_preserved(self, reader):
-        """Lacuna markers [] are left in place for NLP to handle as-is."""
+    def test_lacuna_brackets_stripped(self, reader):
+        """Unrestored gaps ([- - -]) are removed; brackets never reach NLP text."""
         texts = list(reader.texts())
         all_text = " ".join(texts)
-        assert "[" in all_text
+        assert "[" not in all_text
+        assert "]" not in all_text
 
 
 class TestTxtdownTextcrit:

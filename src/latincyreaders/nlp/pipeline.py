@@ -97,6 +97,7 @@ def _register_extensions() -> None:
         Token.set_extension("is_crux", default=False)
         Token.set_extension("is_addition", default=False)
         Token.set_extension("is_expansion", default=False)
+        Token.set_extension("is_supplement", default=False)
 
     if not Token.has_extension("newline_after"):
         Token.set_extension("newline_after", default=False)
