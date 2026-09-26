@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from spacy.tokens import Doc
+from spacy.tokens import Doc, Token
 from spacy.vocab import Vocab
 
 
@@ -266,6 +266,11 @@ def conlluc_to_doc(
             token.tag_ = td["xpos"]
             token.dep_ = td["deprel"]
 
+            # Restore the durable opaque token id from MISC (TokenId=), if present.
+            tid = td["misc"].get("TokenId")
+            if tid and Token.has_extension("token_id"):
+                token._.token_id = tid
+
             # Morphological features
             feats = td.get("feats", {})
             if feats:
@@ -382,6 +387,11 @@ def _format_misc(token: Any) -> str:
             parts["NER"] = f"{iob}-{token.ent_type_}"
         elif iob == "O":
             pass  # don't clutter with O tags
+    # Durable opaque token id — surfaced so a readable/exported .conlluc shows the
+    # ids that the JSON correction layer references. (Runtime ids live in the
+    # DocBin user_data; this is for human inspection and interchange.)
+    if Token.has_extension("token_id") and token._.token_id:
+        parts["TokenId"] = token._.token_id
     if not parts:
         return "_"
     return "|".join(f"{k}={v}" for k, v in sorted(parts.items()))

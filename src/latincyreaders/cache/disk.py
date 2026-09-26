@@ -35,44 +35,82 @@ def _sanitize_user_data(doc: Doc) -> None:
             doc.user_data[key] = str(val)
 
 
-def _stash_remorph(doc: Doc) -> None:
-    """Save token._.remorph values into doc.user_data for DocBin serialization.
+# Custom Token extensions preserved through DocBin, which otherwise drops custom
+# token attributes. Excludes read-time/transient markers (e.g. ``corrected``): the
+# base cache is always silver, so correction state never enters it.
+_STASHED_TOKEN_EXTS = (
+    "remorph",
+    "token_id",
+    "ud",
+    "citation",
+    "speaker",
+    "is_quote",
+    "is_crux",
+    "is_addition",
+    "is_expansion",
+    "is_supplement",
+    "newline_after",
+)
 
-    DocBin doesn't persist custom token extensions, so we stash the
-    remorph values as a list in ``doc.user_data["_remorph"]`` keyed by
-    token index.  Only non-None values are stored (as a sparse dict)
-    to keep the payload small.
+
+def _stash_token_extensions(doc: Doc) -> None:
+    """Stash custom Token extension values into ``doc.user_data`` for DocBin.
+
+    DocBin serializes ``doc.user_data`` (``store_user_data=True``) but drops custom
+    *token* extensions, so we save the non-default values of the known data
+    extensions (:data:`_STASHED_TOKEN_EXTS`) sparsely, keyed by token index, and
+    restore them after load. This preserves rich annotations — durable ids,
+    remorph, text-critical flags, verse/newline markers — across the round-trip.
     """
     from spacy.tokens import Token
 
-    if not Token.has_extension("remorph"):
-        return
-
-    sparse: dict[str, str] = {}
-    for token in doc:
-        val = token._.remorph
-        if val is not None:
+    payload: dict[str, dict[str, Any]] = {}
+    for name in _STASHED_TOKEN_EXTS:
+        if not Token.has_extension(name):
+            continue
+        sparse: dict[str, Any] = {}
+        for token in doc:
+            val = getattr(token._, name)
+            if val is None or val is False or val == "":
+                continue
             sparse[str(token.i)] = val
+        if sparse:
+            payload[name] = sparse
+    if payload:
+        doc.user_data["_tok_exts"] = payload
 
-    if sparse:
-        doc.user_data["_remorph"] = sparse
 
-
-def _restore_remorph(doc: Doc) -> None:
-    """Restore token._.remorph values from doc.user_data after DocBin load."""
+def _restore_token_extensions(doc: Doc) -> None:
+    """Restore custom Token extension values stashed by _stash_token_extensions."""
     from spacy.tokens import Token
 
-    if not Token.has_extension("remorph"):
-        Token.set_extension("remorph", default=None)
+    payload = doc.user_data.pop("_tok_exts", None)
+    # Legacy sparse keys from earlier cache entries.
+    legacy_remorph = doc.user_data.pop("_remorph", None)
+    legacy_ids = doc.user_data.pop("_token_ids", None)
 
-    sparse = doc.user_data.pop("_remorph", None)
-    if sparse is None:
-        return
+    if payload:
+        for name, sparse in payload.items():
+            if not Token.has_extension(name):
+                Token.set_extension(name, default=None)
+            for idx_str, val in sparse.items():
+                idx = int(idx_str)
+                if idx < len(doc):
+                    setattr(doc[idx]._, name, val)
 
-    for idx_str, val in sparse.items():
-        idx = int(idx_str)
-        if idx < len(doc):
-            doc[idx]._.remorph = val
+    if legacy_remorph:
+        if not Token.has_extension("remorph"):
+            Token.set_extension("remorph", default=None)
+        for idx_str, val in legacy_remorph.items():
+            idx = int(idx_str)
+            if idx < len(doc):
+                doc[idx]._.remorph = val
+    if legacy_ids:
+        if not Token.has_extension("token_id"):
+            Token.set_extension("token_id", default=None)
+        for idx, val in enumerate(legacy_ids):
+            if idx < len(doc) and val is not None:
+                doc[idx]._.token_id = val
 
 
 @dataclass
@@ -137,11 +175,12 @@ class DiskCache:
         fileid: str,
         vocab: Vocab,
         source_hash: str | None = None,
+        generator: str | None = None,
     ) -> Doc | None:
         """Load a cached Doc from disk.
 
         Returns ``None`` if the entry does not exist, has expired, or is
-        stale relative to *source_hash*.
+        stale relative to *source_hash* or *generator*.
 
         Args:
             fileid: File identifier.
@@ -151,6 +190,14 @@ class DiskCache:
                 upstream correction detection: when a ``.conlluc`` file
                 changes, its content hash changes, and the DocBin cache
                 auto-invalidates.
+            generator: If provided (e.g. ``"la_core_web_lg@3.9.6"``), the
+                entry is considered stale when its stored ``generator``
+                differs.  This makes the DocBin cache a *stamp-keyed
+                ephemeral* layer: it can never serve annotations produced by
+                a different model (version), so a model upgrade is a
+                self-healing miss+rebuild rather than a silent-stale read.
+                A legacy entry with no stored ``generator`` counts as a
+                mismatch and is rebuilt once.
         """
         if not self._config.persist:
             return None
@@ -169,6 +216,13 @@ class DiskCache:
             if stored_hash != source_hash:
                 return None
 
+        # Staleness check against the annotation model generator stamp.
+        # A missing stored generator (legacy entry) never matches → rebuild.
+        if generator is not None:
+            stored_generator = entry.get("generator")
+            if stored_generator != generator:
+                return None
+
         path = self._dir / entry["filename"]
         if not path.exists():
             return None
@@ -178,7 +232,31 @@ class DiskCache:
         if not docs:
             return None
         doc = docs[0]
-        _restore_remorph(doc)
+        _restore_token_extensions(doc)
+        return doc
+
+    def load_raw(self, fileid: str, vocab: Vocab) -> Doc | None:
+        """Load a cached Doc **ignoring** staleness (generator/hash/TTL).
+
+        Used at rebuild time to recover the *pre-rebuild* tokenization (with its
+        durable token ids) so corrections can be re-pointed onto the new one.
+        Returns ``None`` if no entry/file exists.
+        """
+        if not self._config.persist:
+            return None
+        manifest = self._load_manifest()
+        entry = manifest.get(fileid)
+        if entry is None:
+            return None
+        path = self._dir / entry["filename"]
+        if not path.exists():
+            return None
+        doc_bin = DocBin().from_disk(path)
+        docs = list(doc_bin.get_docs(vocab))
+        if not docs:
+            return None
+        doc = docs[0]
+        _restore_token_extensions(doc)
         return doc
 
     def put(self, fileid: str, doc: Doc, **extra_meta: Any) -> None:
@@ -188,7 +266,9 @@ class DiskCache:
             fileid: Identifier for the cached document.
             doc: spaCy Doc to serialise.
             **extra_meta: Additional metadata to store in the manifest
-                (e.g. ``annotation_level``, ``model_name``).
+                (e.g. ``annotation_level``, ``model_name``, ``model_version``,
+                ``generator``, ``source_hash``).  Store ``generator`` here to
+                make later ``get(..., generator=...)`` calls stamp-aware.
         """
         if not self._config.persist:
             return
@@ -200,7 +280,7 @@ class DiskCache:
         path = self._dir / filename
 
         doc_bin = DocBin(store_user_data=True)
-        _stash_remorph(doc)
+        _stash_token_extensions(doc)
         _sanitize_user_data(doc)
         doc_bin.add(doc)
         doc_bin.to_disk(path)

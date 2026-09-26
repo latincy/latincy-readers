@@ -7,6 +7,7 @@ and the standard iteration interface.
 
 from __future__ import annotations
 
+import importlib.metadata
 import json
 import re
 import unicodedata
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
     from spacy.tokens import Doc, Span, Token
     from latincyreaders.cache.disk import CacheConfig, DiskCache
     from latincyreaders.cache.canonical import CanonicalAnnotationStore, CanonicalConfig
+    from latincyreaders.cache.correction_store import CorrectionStore
     from latincyreaders.cache.vectors import SentenceVectorConfig, SentenceVectorStore
     from latincyreaders.core.selector import FileSelector
     from latincyreaders.nlp.backends import NLPBackend
@@ -69,6 +71,7 @@ class BaseCorpusReader(ABC):
         backend: "NLPBackend | None" = None,
         cache_config: "CacheConfig | None" = None,
         canonical_config: "CanonicalConfig | None" = None,
+        corrections_dir: "Path | str | None" = None,
         enable: list[str] | None = None,
         disable: list[str] | None = None,
     ):
@@ -144,6 +147,17 @@ class BaseCorpusReader(ABC):
 
             self._canonical_store = CanonicalAnnotationStore(canonical_config)
 
+        # Gold correction layer — enabled when a collection name is known (from the
+        # cache or canonical config). Corrections live outside the ephemeral DocBin
+        # cache so they survive clear_cache() and full re-annotation.
+        self._collection: str | None = None
+        if cache_config is not None and cache_config.collection:
+            self._collection = cache_config.collection
+        elif canonical_config is not None and canonical_config.collection:
+            self._collection = canonical_config.collection
+        self._corrections_dir = Path(corrections_dir) if corrections_dir else None
+        self._correction_store: "CorrectionStore | None" = None
+
     @property
     def root(self) -> Path:
         """Root directory of the corpus."""
@@ -181,6 +195,235 @@ class BaseCorpusReader(ABC):
             import spacy
             self._vocab = spacy.blank(self._lang).vocab
         return self._vocab
+
+    def _active_generator(self) -> tuple[str, str]:
+        """Return ``(model_name, model_version)`` for the active annotation model.
+
+        This is the generator stamp written into cache entries and compared on
+        read.  The version is read from an already-loaded pipeline's ``meta``
+        when available; otherwise from the installed model package via
+        :mod:`importlib.metadata` (no pipeline load, so cache-only readers stay
+        lazy); failing both, ``"unknown"``.
+        """
+        nlp = self._backend.nlp if self._backend is not None else self._nlp
+        if nlp is not None:
+            return self._model_name, str(nlp.meta.get("version", "unknown"))
+        try:
+            return self._model_name, importlib.metadata.version(self._model_name)
+        except importlib.metadata.PackageNotFoundError:
+            return self._model_name, "unknown"
+
+    @staticmethod
+    def _ensure_token_ids(doc: "Doc") -> "Doc":
+        """Ensure every token carries a durable opaque id in ``Token._.token_id``.
+
+        Ids are positional at mint time (``t0000``, ``t0001``, …) and are the join
+        key to the JSON correction layer. They are minted only where missing, so a
+        DocBin-loaded doc keeps the ids restored from ``user_data`` and a freshly
+        produced doc gets fresh ones. Across a re-tokenization the *corrections*
+        are re-pointed (via :mod:`latincyreaders.cache.migrate`), not the token
+        strings frozen — so positional minting here is always safe.
+        """
+        from spacy.tokens import Token
+
+        if not Token.has_extension("token_id"):
+            Token.set_extension("token_id", default=None)
+        for token in doc:
+            if token._.token_id is None:
+                token._.token_id = f"t{token.i:04d}"
+        return doc
+
+    def _get_correction_store(self) -> "CorrectionStore | None":
+        """The gold correction store for this collection (lazy), or None."""
+        if self._collection is None:
+            return None
+        if self._correction_store is None:
+            from latincyreaders.cache.correction_store import (
+                _DEFAULT_STORE_ROOT,
+                CorrectionStore,
+            )
+
+            root = self._corrections_dir or _DEFAULT_STORE_ROOT
+            self._correction_store = CorrectionStore(self._collection, store_root=root)
+        return self._correction_store
+
+    def _overlay_corrections(self, fileid: str, doc: "Doc") -> "Doc":
+        """Overlay gold corrections onto *doc* in memory (base cache untouched)."""
+        store = self._get_correction_store()
+        if store is not None:
+            store.overlay(fileid, doc)
+        return doc
+
+    def _repoint_on_rebuild(
+        self, fileid: str, new_doc: "Doc", old_doc: "Doc | None"
+    ) -> None:
+        """Re-point this file's corrections when a rebuild re-tokenized it.
+
+        Called on a DocBin miss where a stale entry existed (*old_doc* is the
+        pre-rebuild doc). If the tokenization actually changed, align old→new and
+        carry the corrections' durable ids across (via
+        :meth:`CorrectionStore.repoint`); survivors re-anchor, and anything whose
+        word-content vanished is quarantined to ``corrections_unresolved.log``.
+        No-op when there are no corrections or the token forms are unchanged.
+        """
+        if old_doc is None:
+            return
+        store = self._get_correction_store()
+        if store is None:
+            return
+        cset = store.load(fileid)
+        if cset is None or not cset.corrections:
+            return
+        if [t.text for t in old_doc] == [t.text for t in new_doc]:
+            return  # tokenization stable — ids still valid
+        model_name, model_version = self._active_generator()
+        store.repoint(
+            fileid, new_doc, old_doc=old_doc,
+            to_generator=f"{model_name}@{model_version}",
+        )
+
+    def repoint_corrections(self, fileid: str) -> tuple[int, int]:
+        """Explicitly re-point *fileid*'s corrections onto the current model's
+        tokenization. Returns ``(repointed, quarantined)``.
+
+        Uses the pre-rebuild DocBin (if present) as the alignment source, else the
+        corrections' stored sentence context. Normally triggered automatically on
+        a rebuild; call this to force it (e.g. after a manual cache change).
+        """
+        store = self._get_correction_store()
+        if store is None or store.load(fileid) is None:
+            return (0, 0)
+        vocab = self.nlp.vocab if self.nlp is not None else self.vocab
+        old_doc = (
+            self._disk_cache.load_raw(fileid, vocab)
+            if self._disk_cache is not None else None
+        )
+        self._cache.pop(fileid, None)
+        new_doc = next(self.docs(fileid))
+        model_name, model_version = self._active_generator()
+        return store.repoint(
+            fileid, new_doc, old_doc=old_doc,
+            to_generator=f"{model_name}@{model_version}",
+        )
+
+    def _store_lru(self, fileid: str, doc: "Doc") -> None:
+        """Evict-and-store a doc in the in-memory LRU cache, if enabled."""
+        if self._cache_enabled:
+            while len(self._cache) >= self._cache_maxsize:
+                self._cache.popitem(last=False)
+            self._cache[fileid] = doc
+
+    def _cached_docs(self, fileids, produce) -> Iterator["Doc"]:
+        """Shared read path: LRU → stamped DocBin → produce, with correction overlay.
+
+        The single caching + correction choke-point for readers whose ``docs()``
+        does not need the canonical ``.conlluc`` tier. *produce* is a callable
+        ``(fileid, path) -> Iterator[Doc]`` running the reader-specific NLP + span
+        building on a cache miss.
+
+        Invariant: every disk write uses the pre-overlay (silver) doc; durable
+        token ids are attached and gold corrections overlaid as the final in-memory
+        step, so the DocBin base cache never carries correction state.
+        """
+        model_name, model_version = self._active_generator()
+        generator = f"{model_name}@{model_version}"
+
+        for path in self._iter_paths(fileids):
+            fileid = str(path.relative_to(self._root))
+
+            # 1. LRU
+            if self._cache_enabled and fileid in self._cache:
+                self._cache_hits += 1
+                self._cache.move_to_end(fileid)
+                yield self._cache[fileid]
+                continue
+
+            vocab = self.nlp.vocab if self.nlp is not None else self.vocab
+            source_hash: str | None = None
+            if self._canonical_store is not None:
+                source_hash = self._canonical_store.content_hash(fileid)
+
+            # 2. DocBin base cache (stamp-keyed)
+            old_doc = None
+            if self._disk_cache is not None:
+                disk_doc = self._disk_cache.get(
+                    fileid, vocab, source_hash=source_hash, generator=generator,
+                )
+                if disk_doc is not None:
+                    self._cache_hits += 1
+                    self._ensure_token_ids(disk_doc)
+                    self._overlay_corrections(fileid, disk_doc)
+                    self._store_lru(fileid, disk_doc)
+                    yield disk_doc
+                    continue
+                # Miss with a stale entry present → capture it for re-pointing.
+                old_doc = self._disk_cache.load_raw(fileid, vocab)
+
+            # 3. Cache miss — produce (reader-specific), persist silver, overlay
+            if self._cache_enabled:
+                self._cache_misses += 1
+
+            for doc in produce(fileid, path):
+                if doc._.fileid is None:
+                    doc._.fileid = fileid
+                self._ensure_token_ids(doc)
+
+                if self._disk_cache is not None:
+                    self._disk_cache.put(
+                        fileid, doc,
+                        annotation_level=self._annotation_level.name,
+                        model_name=self._model_name,
+                        model_version=model_version,
+                        generator=generator,
+                        **({"source_hash": source_hash} if source_hash else {}),
+                    )
+
+                self._repoint_on_rebuild(fileid, doc, old_doc)
+                old_doc = None  # only the first produced doc pairs with the old one
+                self._overlay_corrections(fileid, doc)
+                self._store_lru(fileid, doc)
+                yield doc
+
+    def correct(
+        self,
+        fileid: str,
+        token_id: str,
+        field: str,
+        value: str,
+        *,
+        evidence: str = "",
+    ) -> Any:
+        """Record a gold correction for one token's field and refresh the overlay.
+
+        The correction is stored in the durable correction layer (outside the
+        DocBin cache), keyed by the token's durable id. The base annotations are
+        never mutated; the correction is surfaced on every subsequent ``docs()``
+        read via the read-time overlay.
+
+        Args:
+            fileid: File identifier.
+            token_id: Durable ``Token._.token_id`` of the target token.
+            field: One of ``lemma``, ``upos``, ``xpos``, ``feats``, ``deprel``.
+            value: The corrected value.
+            evidence: Optional free-text justification.
+
+        Returns:
+            The persisted correction record.
+        """
+        store = self._get_correction_store()
+        if store is None:
+            raise ValueError(
+                "Corrections require a collection name. Pass cache_config or "
+                "canonical_config with a `collection` set."
+            )
+        doc = next(self.docs(fileid))
+        model_name, model_version = self._active_generator()
+        record = store.record(
+            fileid, doc, token_id, field, value,
+            evidence=evidence, generator=f"{model_name}@{model_version}",
+        )
+        self._cache.pop(fileid, None)  # drop LRU so next read re-overlays
+        return record
 
     @property
     def annotation_level(self) -> AnnotationLevel:
@@ -425,7 +668,8 @@ class BaseCorpusReader(ABC):
         Lookup order:
             1. LRU memory cache (instant)
             2. DocBin disk cache — checked against canonical content hash
-               so upstream corrections auto-invalidate (fast, ~ms)
+               *and* the active model generator stamp, so upstream corrections
+               and model-version changes both auto-invalidate (fast, ~ms)
             3. Canonical ``.conlluc`` store — parse text, warm DocBin cache
                for next time (~10-100ms)
             4. NLP pipeline from source — write ``.conlluc`` + DocBin (~seconds)
@@ -443,6 +687,11 @@ class BaseCorpusReader(ABC):
                 "Use texts() for raw strings, or set a higher annotation level."
             )
 
+        # Generator stamp for the active model — written into cache entries and
+        # compared on read so a model (version) change can never serve stale.
+        model_name, model_version = self._active_generator()
+        generator = f"{model_name}@{model_version}"
+
         for path in self._iter_paths(fileids):
             fileid = str(path.relative_to(self._root))
 
@@ -458,38 +707,54 @@ class BaseCorpusReader(ABC):
             if self._canonical_store is not None:
                 source_hash = self._canonical_store.content_hash(fileid)
 
-            # 2. Check disk cache (with staleness check against canonical)
+            # 2. Check disk cache (staleness: canonical content hash + generator)
+            old_doc = None
             if self._disk_cache is not None:
                 disk_doc = self._disk_cache.get(
                     fileid, nlp.vocab, source_hash=source_hash,
+                    generator=generator,
                 )
                 if disk_doc is not None:
                     self._cache_hits += 1
+                    # Base DocBin is silver; attach ids and overlay gold in memory.
+                    self._ensure_token_ids(disk_doc)
+                    self._overlay_corrections(fileid, disk_doc)
                     if self._cache_enabled:
                         while len(self._cache) >= self._cache_maxsize:
                             self._cache.popitem(last=False)
                         self._cache[fileid] = disk_doc
                     yield disk_doc
                     continue
+                # Miss with a stale entry present → capture it for re-pointing.
+                old_doc = self._disk_cache.load_raw(fileid, nlp.vocab)
 
             # 3. Check canonical store (.conlluc)
             if self._canonical_store is not None:
-                canonical_doc = self._canonical_store.load(fileid, nlp.vocab)
+                canonical_doc = self._canonical_store.load(
+                    fileid, nlp.vocab,
+                    expected_generator=(model_name, model_version),
+                )
                 if canonical_doc is not None:
                     self._cache_hits += 1
-                    if self._cache_enabled:
-                        while len(self._cache) >= self._cache_maxsize:
-                            self._cache.popitem(last=False)
-                        self._cache[fileid] = canonical_doc
+                    self._ensure_token_ids(canonical_doc)
 
-                    # Warm the disk cache for fast access next time
+                    # Warm the disk cache (silver) for fast access next time —
+                    # before overlaying, so the base DocBin stays uncorrected.
                     if self._disk_cache is not None and source_hash is not None:
                         self._disk_cache.put(
                             fileid, canonical_doc,
                             annotation_level=self._annotation_level.name,
                             model_name=self._model_name,
+                            model_version=model_version,
+                            generator=generator,
                             source_hash=source_hash,
                         )
+
+                    self._overlay_corrections(fileid, canonical_doc)
+                    if self._cache_enabled:
+                        while len(self._cache) >= self._cache_maxsize:
+                            self._cache.popitem(last=False)
+                        self._cache[fileid] = canonical_doc
 
                     yield canonical_doc
                     continue
@@ -505,28 +770,37 @@ class BaseCorpusReader(ABC):
                 doc = nlp(text)
                 doc._.fileid = fileid
                 doc._.metadata = {**json_metadata, **file_metadata}
+                self._ensure_token_ids(doc)
 
-                if self._cache_enabled:
-                    while len(self._cache) >= self._cache_maxsize:
-                        self._cache.popitem(last=False)
-                    self._cache[fileid] = doc
-
-                # Write canonical .conlluc
+                # Write canonical .conlluc (silver — before overlay)
                 if self._canonical_store is not None:
                     self._canonical_store.save(
                         fileid, doc,
                         model_name=self._model_name,
+                        model_version=model_version,
                     )
                     source_hash = self._canonical_store.content_hash(fileid)
 
-                # Persist to disk cache (with source_hash for staleness)
+                # Persist to disk cache (silver; source_hash + generator staleness)
                 if self._disk_cache is not None:
                     self._disk_cache.put(
                         fileid, doc,
                         annotation_level=self._annotation_level.name,
                         model_name=self._model_name,
+                        model_version=model_version,
+                        generator=generator,
                         **({"source_hash": source_hash} if source_hash else {}),
                     )
+
+                # Re-point corrections if this rebuild changed tokenization, then
+                # overlay gold in memory (base cache stays silver) and cache.
+                self._repoint_on_rebuild(fileid, doc, old_doc)
+                old_doc = None
+                self._overlay_corrections(fileid, doc)
+                if self._cache_enabled:
+                    while len(self._cache) >= self._cache_maxsize:
+                        self._cache.popitem(last=False)
+                    self._cache[fileid] = doc
 
                 yield doc
 
@@ -544,12 +818,16 @@ class BaseCorpusReader(ABC):
                 "to the reader constructor."
             )
 
+        model_name, model_version = self._active_generator()
+        generator = f"{model_name}@{model_version}"
         count = 0
         for fileid, doc in self._cache.items():
             self._disk_cache.put(
                 fileid, doc,
                 annotation_level=self._annotation_level.name,
                 model_name=self._model_name,
+                model_version=model_version,
+                generator=generator,
             )
             count += 1
         return count

@@ -7,6 +7,91 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-07-26
+
+### Added
+
+- **Gold correction layer.** NLP annotations can now be corrected and the fixes
+  *locked in*, so a cached text carries trustworthy annotations and a
+  training-ready record of human judgements. `reader.correct(fileid, token_id,
+  field, value, evidence=...)` records a correction; it is applied as a read-time
+  overlay on every subsequent `docs()` call. Corrections live in a durable store
+  (`~/latincy_data/corrections/<collection>/`, or a `corrections_dir` you pass)
+  **separate from the DocBin cache**, so they survive `clear_cache()` and full
+  re-annotation. Supported fields: `lemma`, `upos`, `xpos`, `feats`, `deprel`.
+- **Durable opaque token ids** (`Token._.token_id`, e.g. `t0042`) — the join key
+  between the DocBin base cache and the correction layer. Minted positionally,
+  persisted through DocBin via `user_data`, and surfaced in `.conlluc` exports as
+  `TokenId=` in the MISC column.
+- **Token-drift migration** (`latincyreaders.cache.migrate`) — a pure form-anchored
+  aligner (ported from latincy-viewer) that re-points corrections across
+  tokenization changes (split/merge/shift), verifying each remap against the
+  recorded surface form and quarantining anything that cannot be placed safely to
+  `corrections_unresolved.log` rather than mis-applying it.
+- **Automatic re-pointing on rebuild.** When a model upgrade (generator-stamp
+  mismatch) rebuilds a text's DocBin base and the tokenization changed, its
+  corrections are re-pointed onto the new tokens automatically — the pre-rebuild
+  DocBin is captured (`DiskCache.load_raw`) as the alignment source. Force it
+  explicitly with `reader.repoint_corrections(fileid)`.
+- **Migration ledger.** Each drift re-pointing is recorded as a revision
+  (`migrations.jsonl` + `head.json` in the correction store) capturing the
+  `from → to` generator, revision number, and repointed/quarantined counts —
+  an auditable trail of "this collection was migrated from lg-3.9.4 to 3.9.6."
+  Inspect via `CorrectionStore.migrations()`.
+
+### Changed
+
+- **Corrections coexist with the base, never overwrite it.** The overlay surfaces
+  the gold value on the in-memory Doc and flags `Token._.corrected`; the DocBin
+  base cache is never mutated (it stays silver), and the correction record keeps
+  the machine value it overrode in `was`.
+
+### Notes
+
+- **Shared cache+overlay choke-point** (`BaseCorpusReader._cached_docs`). Readers
+  route their per-file production through it to get the DocBin base cache +
+  correction overlay uniformly. `TxtdownReader` and `WikiSourceReader` now use it
+  (previously they reprocessed NLP on every read and carried no corrections);
+  `BaseCorpusReader`/`TesseraeReader` keep their own read-through (they add the
+  canonical `.conlluc` tier), and `DigilibtReader` inherits via `super().docs()`.
+- **DocBin now preserves all known custom token extensions** (remorph, durable
+  ids, text-critical flags, verse/newline/speaker markers) via a generalized
+  `user_data` stash — previously only `remorph` survived a round-trip, so cached
+  docs silently lost the rest.
+
+## [1.8.0] - 2026-07-26
+
+### Added
+
+- **Annotation-model generator stamp.** Every cache write now records the model
+  that produced it (`model_name` + `model_version`, read from the installed model
+  package via `importlib.metadata`, falling back to a loaded pipeline's `meta`).
+  Previously `model_version` was plumbed through the code but never populated, so
+  cached artifacts recorded `model_version = unknown`.
+- **`AnnotationModelMismatchWarning`** (in `latincyreaders.warnings`). When a
+  canonical `.conlluc` was built by a different model/version than the one in use,
+  loading it now emits a loud warning (once per fileid) instead of silently
+  serving stale annotations. The canonical store is *not* auto-invalidated — it
+  may be intentionally pinned or community-corrected — so the caller decides
+  whether to rebuild.
+
+### Changed
+
+- **DocBin (`.spacy`) disk cache is now a stamp-keyed ephemeral layer.** Its
+  read-through staleness check compares the active model generator against the
+  stored stamp; a mismatch is a self-healing miss + rebuild. This closes the
+  silent-stale failure where a DocBin cache built under `la_core_web_lg` 3.9.4
+  kept serving stale sentence boundaries after an upgrade to 3.9.6.
+- **`TesseraeReader.docs()` DocBin path now participates in staleness.** It
+  previously passed no staleness key at all (no `source_hash`, no generator), so
+  its cached blobs never invalidated; it now passes both.
+
+### Migration
+
+- Legacy cache entries written before this release carry no generator stamp and
+  are therefore treated as stale on first access under a known model version —
+  they are rebuilt once, then hit normally. No manual cache deletion is needed.
+
 ## [1.7.0] - 2026-07-09
 
 ### Added

@@ -291,6 +291,11 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
         # until we actually need the pipeline.
         vocab = self.vocab
 
+        # Generator stamp for the active model. Resolved without loading the
+        # pipeline (via the installed model package) so cache hits stay lazy.
+        model_name, model_version = self._active_generator()
+        generator = f"{model_name}@{model_version}"
+
         for path in self._iter_paths(fileids):
             fileid = str(path.relative_to(self._root))
 
@@ -308,9 +313,14 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                 and self._canonical_config.prefer_canonical
                 and self._canonical_store.has(fileid)
             ):
-                canonical_doc = self._canonical_store.load(fileid, vocab)
+                canonical_doc = self._canonical_store.load(
+                    fileid, vocab,
+                    expected_generator=(model_name, model_version),
+                )
                 if canonical_doc is not None:
                     self._cache_hits += 1
+                    self._ensure_token_ids(canonical_doc)
+                    self._overlay_corrections(fileid, canonical_doc)
                     if self._cache_enabled:
                         while len(self._cache) >= self._cache_maxsize:
                             self._cache.popitem(last=False)
@@ -330,6 +340,8 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                         "source": "conlluc",
                         "conlluc_path": str(conlluc_path),
                     }
+                    self._ensure_token_ids(conlluc_doc)
+                    self._overlay_corrections(fileid, conlluc_doc)
                     if self._cache_enabled:
                         while len(self._cache) >= self._cache_maxsize:
                             self._cache.popitem(last=False)
@@ -337,17 +349,29 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                     yield conlluc_doc
                     continue
 
-            # Check disk cache
+            # Check disk cache (stamp-keyed: invalidates on model-version change)
+            old_doc = None
             if self._disk_cache is not None:
-                disk_doc = self._disk_cache.get(fileid, vocab)
+                source_hash = (
+                    self._canonical_store.content_hash(fileid)
+                    if self._canonical_store is not None
+                    else None
+                )
+                disk_doc = self._disk_cache.get(
+                    fileid, vocab, source_hash=source_hash, generator=generator,
+                )
                 if disk_doc is not None:
                     self._cache_hits += 1
+                    self._ensure_token_ids(disk_doc)
+                    self._overlay_corrections(fileid, disk_doc)
                     if self._cache_enabled:
                         while len(self._cache) >= self._cache_maxsize:
                             self._cache.popitem(last=False)
                         self._cache[fileid] = disk_doc
                     yield disk_doc
                     continue
+                # Miss with a stale entry present → capture it for re-pointing.
+                old_doc = self._disk_cache.load_raw(fileid, vocab)
 
             # Cache miss — need the full NLP pipeline now
             nlp = self.nlp
@@ -374,20 +398,33 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                 lines_data = file_metadata.get("_lines", [])
                 doc.spans["lines"] = self._make_line_spans(doc, lines_data)
                 mark_newlines_from_spans(doc)
+                self._ensure_token_ids(doc)
 
-                # Store in LRU cache if enabled
-                if self._cache_enabled:
-                    while len(self._cache) >= self._cache_maxsize:
-                        self._cache.popitem(last=False)
-                    self._cache[fileid] = doc
-
-                # Persist to disk cache
+                # Persist to disk cache (silver; stamped with the active generator)
                 if self._disk_cache is not None:
+                    source_hash = (
+                        self._canonical_store.content_hash(fileid)
+                        if self._canonical_store is not None
+                        else None
+                    )
                     self._disk_cache.put(
                         fileid, doc,
                         annotation_level=self._annotation_level.name,
                         model_name=self._model_name,
+                        model_version=model_version,
+                        generator=generator,
+                        **({"source_hash": source_hash} if source_hash else {}),
                     )
+
+                # Re-point corrections if this rebuild changed tokenization, then
+                # overlay gold in memory (base stays silver) and cache in LRU.
+                self._repoint_on_rebuild(fileid, doc, old_doc)
+                old_doc = None
+                self._overlay_corrections(fileid, doc)
+                if self._cache_enabled:
+                    while len(self._cache) >= self._cache_maxsize:
+                        self._cache.popitem(last=False)
+                    self._cache[fileid] = doc
 
                 yield doc
 

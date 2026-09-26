@@ -312,29 +312,29 @@ class TxtdownReader(BaseCorpusReader):
         Yields:
             spaCy Doc objects.
         """
-        nlp = self.nlp
-
-        if nlp is None:
+        if self.nlp is None:
             raise ValueError(
                 "Cannot create Docs with annotation_level=NONE. "
                 "Use texts() for raw strings."
             )
+        # Route through the shared cache + correction-overlay choke-point.
+        yield from self._cached_docs(fileids, self._produce_docs)
 
-        for path in self._iter_paths(fileids):
-            fileid = str(path.relative_to(self._root))
+    def _produce_docs(self, fileid: str, path: "Path") -> Iterator["Doc"]:
+        """Reader-specific production for a cache miss: NLP + citation/textcrit spans."""
+        nlp = self.nlp
+        for text, metadata in self._parse_file(path):
+            text = self._normalize_pre_markup(text)
+            markup_data = _collect_markup(text)
+            clean_text = self._strip_critical_markup(text)
+            doc = nlp(clean_text)
+            doc._.fileid = fileid
+            doc._.metadata = metadata
 
-            for text, metadata in self._parse_file(path):
-                text = self._normalize_pre_markup(text)
-                markup_data = _collect_markup(text)
-                clean_text = self._strip_critical_markup(text)
-                doc = nlp(clean_text)
-                doc._.fileid = fileid
-                doc._.metadata = metadata
+            self._add_citation_spans(doc, metadata)
+            self._apply_textcrit(doc, markup_data)
 
-                self._add_citation_spans(doc, metadata)
-                self._apply_textcrit(doc, markup_data)
-
-                yield doc
+            yield doc
 
     def _apply_textcrit(self, doc: "Doc", markup_data: list[tuple]) -> None:
         """Populate doc._.textcrit and set per-token text-critical flags.

@@ -449,55 +449,39 @@ class WikiSourceReader(BaseCorpusReader):
         Yields:
             spaCy Doc objects with citation spans.
         """
-        nlp = self.nlp
-        if nlp is None:
+        if self.nlp is None:
             raise ValueError(
                 "Cannot create Docs with annotation_level=NONE. "
                 "Use texts() for raw strings."
             )
+        # Route through the shared cache + correction-overlay choke-point.
+        yield from self._cached_docs(fileids, self._produce_docs)
 
-        for path in self._iter_paths(fileids):
-            fileid = str(path.relative_to(self._root))
+    def _produce_docs(self, fileid: str, path: "Path") -> Iterator["Doc"]:
+        """Reader-specific production for a cache miss: NLP + verse/section spans."""
+        nlp = self.nlp
+        json_metadata = self.get_metadata(fileid)
+        for text, file_metadata in self._parse_file(path):
+            text = self._normalize_text(text)
+            doc = nlp(text)
+            doc._.fileid = fileid
 
-            # Check cache first
-            if self._cache_enabled and fileid in self._cache:
-                self._cache_hits += 1
-                self._cache.move_to_end(fileid)
-                yield self._cache[fileid]
-                continue
+            # Merge metadata (excluding private keys)
+            clean_meta = {
+                k: v for k, v in file_metadata.items()
+                if not k.startswith("_")
+            }
+            doc._.metadata = {**json_metadata, **clean_meta}
 
-            if self._cache_enabled:
-                self._cache_misses += 1
+            # Create citation spans based on content type
+            if file_metadata.get("content_type") == "verse":
+                verse_lines = file_metadata.get("_verse_lines", [])
+                doc.spans["lines"] = self._make_verse_spans(doc, verse_lines)
+            else:
+                sections = file_metadata.get("_sections", [])
+                doc.spans["sections"] = self._make_section_spans(doc, sections)
 
-            json_metadata = self.get_metadata(fileid)
-
-            for text, file_metadata in self._parse_file(path):
-                text = self._normalize_text(text)
-                doc = nlp(text)
-                doc._.fileid = fileid
-
-                # Merge metadata (excluding private keys)
-                clean_meta = {
-                    k: v for k, v in file_metadata.items()
-                    if not k.startswith("_")
-                }
-                doc._.metadata = {**json_metadata, **clean_meta}
-
-                # Create citation spans based on content type
-                if file_metadata.get("content_type") == "verse":
-                    verse_lines = file_metadata.get("_verse_lines", [])
-                    doc.spans["lines"] = self._make_verse_spans(doc, verse_lines)
-                else:
-                    sections = file_metadata.get("_sections", [])
-                    doc.spans["sections"] = self._make_section_spans(doc, sections)
-
-                # Cache
-                if self._cache_enabled:
-                    while len(self._cache) >= self._cache_maxsize:
-                        self._cache.popitem(last=False)
-                    self._cache[fileid] = doc
-
-                yield doc
+            yield doc
 
     def _make_section_spans(
         self, doc: "Doc", sections: list[WikiSection]

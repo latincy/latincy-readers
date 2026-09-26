@@ -19,6 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 from shutil import copytree
@@ -35,6 +36,7 @@ from latincyreaders.cache.conlluc import (
     write_conlluc,
 )
 from latincyreaders.cache.disk import _fileid_hash
+from latincyreaders.warnings import AnnotationModelMismatchWarning
 
 
 def _fileid_to_filename(fileid: str) -> str:
@@ -107,6 +109,8 @@ class CanonicalAnnotationStore:
         self._dir = config.store_root / config.collection
         self._manifest_path = self._dir / "manifest.json"
         self._manifest: dict[str, Any] | None = None
+        # fileids already warned about (once per process) for a stale generator
+        self._warned_mismatch: set[str] = set()
 
     @property
     def collection(self) -> str:
@@ -146,17 +150,66 @@ class CanonicalAnnotationStore:
 
         return None
 
-    def load(self, fileid: str, vocab: Vocab) -> Doc | None:
+    def load(
+        self,
+        fileid: str,
+        vocab: Vocab,
+        expected_generator: tuple[str, str] | None = None,
+    ) -> Doc | None:
         """Load canonical annotations for a fileid.
 
         Returns None if no canonical annotation exists.
+
+        Args:
+            fileid: File identifier.
+            vocab: spaCy Vocab for Doc reconstruction.
+            expected_generator: Optional ``(model_name, model_version)`` of the
+                model currently in use.  When provided and the stored ``.conlluc``
+                header names a different model/version, an
+                :class:`~latincyreaders.warnings.AnnotationModelMismatchWarning`
+                is emitted (once per fileid).  The canonical store is *not*
+                auto-invalidated — the caller decides whether to rebuild.
         """
         path = self._resolve_path(fileid)
         if path is None:
             return None
 
-        doc, _meta = read_conlluc(path, vocab)
+        doc, meta = read_conlluc(path, vocab)
+        if expected_generator is not None:
+            self._warn_if_stale(fileid, meta, expected_generator)
         return doc
+
+    def _warn_if_stale(
+        self,
+        fileid: str,
+        meta: dict[str, str],
+        expected_generator: tuple[str, str],
+    ) -> None:
+        """Emit a mismatch warning if the stored generator differs from active.
+
+        Warns at most once per fileid per process.  Skips when the active
+        model version is unknown (nothing reliable to compare against).
+        """
+        exp_name, exp_version = expected_generator
+        if exp_version in ("", "unknown") or fileid in self._warned_mismatch:
+            return
+
+        stored_name = meta.get("model_name", "")
+        stored_version = meta.get("model_version", "")
+        if (stored_name, stored_version) == (exp_name, exp_version):
+            return
+
+        self._warned_mismatch.add(fileid)
+        stored = f"{stored_name or 'unknown'} {stored_version or 'unknown'}"
+        warnings.warn(
+            f"AnnotationModelMismatchWarning: canonical annotations for "
+            f"{fileid!r} were built with {stored}; active model is "
+            f"{exp_name} {exp_version}. Boundaries/tags may be stale. "
+            f"Rebuild the canonical store (or delete the .conlluc to "
+            f"regenerate) if you need annotations from the active model.",
+            AnnotationModelMismatchWarning,
+            stacklevel=3,
+        )
 
     def has(self, fileid: str) -> bool:
         """Check if canonical annotations exist for a fileid."""
