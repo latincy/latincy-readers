@@ -1,6 +1,6 @@
 <img src="https://raw.githubusercontent.com/latincy/latincy-readers/main/assets/latincy-readers-logo.jpg" alt="LatinCy Readers" width="400">
 
-[![PyPI version](https://img.shields.io/badge/pypi-v1.7.0-orange.svg)](https://pypi.org/project/latincy-readers/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.9.0-orange.svg)](https://pypi.org/project/latincy-readers/)
 [![Python versions](https://img.shields.io/pypi/pyversions/latincy-readers.svg)](https://pypi.org/project/latincy-readers/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
