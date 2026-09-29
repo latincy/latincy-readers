@@ -135,5 +135,5 @@ class TestEpistolaeReaderDocs:
 
     def test_docs_contain_latin_tokens(self, reader):
         all_tokens = [t.text for doc in reader.docs() for t in doc]
-        assert "venerabilis" in all_tokens
+        assert "uenerabilis" in all_tokens  # LatinCy normalizes v -> u
         assert "Domino" in all_tokens
