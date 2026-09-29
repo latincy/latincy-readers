@@ -80,8 +80,9 @@ def _elem_to_text(elem: etree._Element) -> str:
         return ""
 
     if tag == _EXPAN_TAG:
-        abbr_text = ""
-        ex_text = ""
+        # A compound abbreviation may hold several abbr/ex pairs
+        # (e.g. co(n)s(ul)) — accumulate all of them in document order.
+        parts = []
         for child in elem:
             ctag = _localname(child)
             if ctag == _ABBR_TAG:
@@ -89,9 +90,10 @@ def _elem_to_text(elem: etree._Element) -> str:
                 abbr_text = (child.text or "") + "".join(
                     _elem_to_text(c) + (c.tail or "") for c in child
                 )
+                parts.append(abbr_text)
             elif ctag == _EX_TAG:
-                ex_text = child.text or ""
-        return abbr_text + ex_text
+                parts.append(child.text or "")
+        return "".join(parts)
 
     # For all other elements (including unknown markup), recurse
     result = elem.text or ""
@@ -437,25 +439,26 @@ class EDHReader(TEIReader):
         Yields:
             spaCy Doc objects.
         """
-        nlp = self.nlp
-        if nlp is None:
+        if self.nlp is None:
             raise ValueError(
                 "Cannot create Docs with annotation_level=NONE. "
                 "Use texts() for raw strings."
             )
+        # Route through the shared cache + correction-overlay choke-point.
+        yield from self._cached_docs(fileids, self._produce_docs)
 
-        for path in self._iter_paths(fileids):
-            fileid = str(path.relative_to(self._root))
+    def _produce_docs(self, fileid: str, path: Path) -> Iterator["Doc"]:
+        """Reader-specific production for a cache miss: NLP + line spans."""
+        nlp = self.nlp
+        for text, metadata in self._parse_file(path):
+            text = self._normalize_text(text)
+            doc = nlp(text)
+            doc._.fileid = fileid
+            doc._.metadata = metadata
 
-            for text, metadata in self._parse_file(path):
-                text = self._normalize_text(text)
-                doc = nlp(text)
-                doc._.fileid = fileid
-                doc._.metadata = metadata
+            self._add_line_spans(doc, metadata)
 
-                self._add_line_spans(doc, metadata)
-
-                yield doc
+            yield doc
 
     def _add_line_spans(self, doc: "Doc", metadata: dict) -> None:
         """Populate ``doc.spans["lines"]`` from parsed line data."""

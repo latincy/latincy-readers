@@ -193,3 +193,30 @@ class TestEDHReaderDocs:
         reader = EDHReader(root=edh_dir)
         doc = list(reader.docs())[0]
         assert len(doc) > 0
+
+    def test_docs_route_through_shared_cache(self, edh_dir):
+        """docs() must go through _cached_docs — token ids minted, LRU hits on rereads."""
+        from latincyreaders import EDHReader
+        reader = EDHReader(root=edh_dir)
+        doc = list(reader.docs())[0]
+        assert doc[0]._.token_id is not None
+
+        list(reader.docs())  # second read should be an LRU hit, not reprocessed
+        stats = reader.cache_stats()
+        assert stats["hits"] >= 1
+
+
+class TestEDHReaderExpanAccumulation:
+    """<expan> with multiple abbr/ex pairs must accumulate, not overwrite."""
+
+    def test_compound_abbreviation_expands_all_pairs(self):
+        from latincyreaders.readers.edh import _elem_to_text
+        from lxml import etree
+
+        xml = (
+            "<ab>"
+            "<expan><abbr>co</abbr><ex>n</ex><abbr>s</abbr><ex>ul</ex></expan>"
+            "</ab>"
+        )
+        elem = etree.fromstring(xml)
+        assert _elem_to_text(elem) == "consul"
