@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **EDHReader, FormulaeReader, EpistolaeReader.** Three readers deferred from
+  v1.6.0 pending source-project coordination. None of the three download the
+  corpus — `root` must point at a local checkout the user has acquired
+  themselves, the same pattern FormulaeReader and EpistolaeReader already
+  used. EDHReader previously had `DownloadableCorpusMixin`; it has been
+  removed rather than shipped disabled.
+  - `EDHReader` — Epigraphic Database Heidelberg EpiDoc TEI-XML
+    (~82K Latin inscriptions; CC BY-SA 4.0).
+  - `FormulaeReader` — Formulae-Litterae-Chartae TEI-XML charters
+    (CC BY 4.0).
+  - `EpistolaeReader` — Epistolae medieval women's Latin letters, Hugo
+    Markdown source (CC BY-NC-SA 4.0).
+
 ## [1.9.0] - 2026-07-26
 
 ### Added

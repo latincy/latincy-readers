@@ -55,6 +55,9 @@ from latincyreaders.readers.tei import TEIReader, PerseusReader
 from latincyreaders.readers.digilibt import DigilibLTReader
 from latincyreaders.readers.pta import PTAReader
 from latincyreaders.readers.csel import CSELReader
+from latincyreaders.readers.edh import EDHReader
+from latincyreaders.readers.formulae import FormulaeReader
+from latincyreaders.readers.epistolae import EpistolaeReader
 from latincyreaders.readers.camena import CamenaReader
 from latincyreaders.readers.txtdown import TxtdownReader
 from latincyreaders.readers.wikisource import WikiSourceReader
@@ -86,6 +89,9 @@ __all__ = [
     "DigilibLTReader",
     "PTAReader",
     "CSELReader",
+    "EDHReader",
+    "FormulaeReader",
+    "EpistolaeReader",
     "CamenaReader",
     "TxtdownReader",
     "WikiSourceReader",

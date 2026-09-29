@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <publicationStmt>
+        <idno type="URI">http://edh-www.adw.uni-heidelberg.de/edh/inschrift/HD000001</idno>
+        <idno type="localID">HD000001</idno>
+      </publicationStmt>
+      <sourceDesc>
+        <msDesc>
+          <physDesc/>
+          <history>
+            <origin>
+              <origPlace>
+                <placeName type="provinceItalicRegion">Latium et Campania (Regio I)</placeName>
+              </origPlace>
+              <origDate notBefore-custom="0071" notAfter-custom="0130"/>
+            </origin>
+          </history>
+        </msDesc>
+      </sourceDesc>
+    </fileDesc>
+    <profileDesc>
+      <textClass>
+        <keywords>
+          <term ref="https://www.eagle-network.eu/voc/typeins/lod/92.html">epitaph</term>
+        </keywords>
+      </textClass>
+    </profileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <div type="edition" xml:lang="la">
+        <ab>
+          <lb n="1"/><expan><abbr>D</abbr><ex>is</ex></expan> <expan><abbr>M</abbr><ex>anibus</ex></expan>
+          <lb n="2"/>Noniae <expan><abbr>P</abbr><ex>ubli</ex></expan> <expan><abbr>f</abbr><ex>iliae</ex></expan> Optatae
+          <lb n="3"/><supplied reason="lost">Gaio</supplied> Iulio Artemoni
+          <lb n="4"/>parentibus <del>erasum</del> pientissimis
+        </ab>
+      </div>
+    </body>
+  </text>
+</TEI>
