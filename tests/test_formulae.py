@@ -58,6 +58,43 @@ class TestFormulaeReaderTexts:
         assert "lemmaRef" not in all_text
         assert "misericordia" in all_text  # word text preserved
 
+    def test_edition_text_excludes_notes_by_default(self, formulae_dir):
+        """remove_notes=True (the default) must strip <note> commentary
+        from the edition div, matching TEIReader's documented behavior."""
+        from latincyreaders import FormulaeReader
+        from lxml import etree
+
+        reader = FormulaeReader(root=formulae_dir)
+        xml = (
+            '<TEI xmlns="http://www.tei-c.org/ns/1.0">'
+            "<text><body>"
+            "<div type='edition' xml:lang='lat'>"
+            "<w>Notum</w> <note>editorial commentary</note> <w>sit</w>"
+            "</div>"
+            "</body></text></TEI>"
+        )
+        root = etree.fromstring(xml.encode())
+        text = reader._extract_edition_text(root)
+        assert "editorial commentary" not in text
+        assert "Notum" in text and "sit" in text
+
+    def test_edition_text_includes_notes_when_disabled(self, formulae_dir):
+        from latincyreaders import FormulaeReader
+        from lxml import etree
+
+        reader = FormulaeReader(root=formulae_dir, remove_notes=False)
+        xml = (
+            '<TEI xmlns="http://www.tei-c.org/ns/1.0">'
+            "<text><body>"
+            "<div type='edition' xml:lang='lat'>"
+            "<w>Notum</w> <note>editorial commentary</note> <w>sit</w>"
+            "</div>"
+            "</body></text></TEI>"
+        )
+        root = etree.fromstring(xml.encode())
+        text = reader._extract_edition_text(root)
+        assert "editorial commentary" in text
+
 
 class TestFormulaeReaderHeaders:
     """Metadata extraction from teiHeader and body."""

@@ -171,6 +171,10 @@ class FormulaeReader(TEIReader):
         Returns:
             Joined text string, or empty string if no edition div found.
         """
+        # Strip <note> elements from the tree first (respects remove_notes),
+        # mutating root in place so the edition-div xpath below never sees them.
+        self._get_body(root)
+
         for xpath in [
             ".//tei:body//tei:div[@type='edition'][@xml:lang='lat']",
             ".//tei:body//tei:div[@type='edition']",
