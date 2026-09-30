@@ -9,18 +9,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **EDHReader, FormulaeReader, EpistolaeReader.** Three readers deferred from
-  v1.6.0 pending source-project coordination. None of the three download the
+- **EDHReader, FormulaeReader, EpistolaeReader.** None of the three download the
   corpus — `root` must point at a local checkout the user has acquired
-  themselves, the same pattern FormulaeReader and EpistolaeReader already
-  used. EDHReader previously had `DownloadableCorpusMixin`; it has been
-  removed rather than shipped disabled.
+  themselves. Designed for use with the following open collections:
   - `EDHReader` — Epigraphic Database Heidelberg EpiDoc TEI-XML
     (~82K Latin inscriptions; CC BY-SA 4.0).
   - `FormulaeReader` — Formulae-Litterae-Chartae TEI-XML charters
     (CC BY 4.0).
   - `EpistolaeReader` — Epistolae medieval women's Latin letters, Hugo
     Markdown source (CC BY-NC-SA 4.0).
+
+### Fixed
+
+- **EDHReader now uses the shared cache/correction pipeline.** `docs()`
+  previously called the NLP pipeline directly, bypassing disk caching,
+  token-id minting, and the gold-correction overlay entirely —
+  `reader.correct()` always raised on EDH docs.
+- **EDHReader compound abbreviation expansion.** A multi-pair `<expan>`
+  (e.g. `co(n)s(ul)`) collapsed to only its last `abbr`/`ex` pair; all
+  pairs are now accumulated in document order.
+- **FormulaeReader `remove_notes`.** The `remove_notes=True` default had no
+  effect — `<note>` editorial commentary was not being stripped from the
+  extracted edition text.
+- **Correction store: collision-safe filenames.** Two fileids that
+  flattened to the same path under the old naive scheme (e.g. `a/b` and
+  `a--b`) could collide onto the same `.corr.json` file; correction
+  filenames now reuse the same sha256 hash as the DocBin cache.
+- **Correction store: invalid values now rejected at record time.**
+  `reader.correct()` previously accepted any value silently, even one that
+  could never actually apply (e.g. a non-UD `upos` tag), leaving the
+  correction permanently inert. It now raises immediately.
+- **Correction store: self-anchoring re-point no longer drifts across
+  repeated phrases.** The fallback re-pointer (used when the pre-rebuild
+  DocBin is unavailable) now scopes its alignment to the correction's own
+  sentence rather than the whole document — a repeated formulaic phrase
+  could previously re-anchor a correction to the wrong occurrence.
+- **`persist_cache()` no longer bakes gold corrections into the disk
+  cache.** The base DocBin cache is documented to stay "silver"
+  (uncorrected); force-flushing the in-memory cache could previously write
+  already-corrected values to disk.
+- **`repoint_corrections()` now actually forces a re-anchor.** It
+  previously only cleared the in-memory cache, so a still-fresh disk cache
+  entry was just reloaded unchanged, making the re-point a no-op.
+- **Freshly-annotated docs are no longer lost on a downstream caching
+  failure.** A failure in the disk-cache write, canonical-store save, or
+  correction re-point/overlay step (e.g. disk full) previously discarded
+  NLP work that had already completed; the doc is now cached first. Fixed
+  in both the shared caching path and `TesseraeReader`, which carries its
+  own duplicate of the same pipeline.
+- **`Token._.remorph` is now always registered on disk-cache load,** even
+  for a doc where every token is at the default (nothing to restore) —
+  previously such a doc could leave the extension unregistered
+  process-wide.
+
+### Changed
+
+- Local `scratch/` working files are now excluded from git and from the
+  sdist (previously picked up by the build regardless of git-tracking,
+  since packaging is filesystem-based, not git-aware).
 
 ## [1.9.0] - 2026-07-26
 
