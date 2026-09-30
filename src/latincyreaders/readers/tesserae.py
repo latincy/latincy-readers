@@ -400,6 +400,15 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                 mark_newlines_from_spans(doc)
                 self._ensure_token_ids(doc)
 
+                # Cache immediately, before any step that could raise (disk
+                # write, repoint, overlay) — otherwise a failure there would
+                # discard NLP work that already succeeded. Later in-place
+                # mutations still apply, since this is the same object.
+                if self._cache_enabled:
+                    while len(self._cache) >= self._cache_maxsize:
+                        self._cache.popitem(last=False)
+                    self._cache[fileid] = doc
+
                 # Persist to disk cache (silver; stamped with the active generator)
                 if self._disk_cache is not None:
                     source_hash = (
@@ -421,10 +430,6 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
                 self._repoint_on_rebuild(fileid, doc, old_doc)
                 old_doc = None
                 self._overlay_corrections(fileid, doc)
-                if self._cache_enabled:
-                    while len(self._cache) >= self._cache_maxsize:
-                        self._cache.popitem(last=False)
-                    self._cache[fileid] = doc
 
                 yield doc
 
