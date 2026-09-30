@@ -31,6 +31,7 @@ Layout::
 from __future__ import annotations
 
 import datetime
+import difflib
 import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -38,6 +39,7 @@ from typing import Any
 
 from spacy.tokens import Doc
 
+from latincyreaders.cache.disk import _fileid_hash
 from latincyreaders.cache.migrate import TokenRef, align_section, repoint_correction
 
 # Scalar CoNLL-U fields a correction can set on a token in this increment.
@@ -52,8 +54,13 @@ def _today() -> str:
 
 
 def _fileid_to_filename(fileid: str, suffix: str) -> str:
-    """Flatten path separators into a safe single filename."""
-    return fileid.replace("/", "--").replace("\\", "--") + suffix
+    """Derive a collision-free filename for a fileid.
+
+    Reuses disk.py's sha256-based hash (also used for the DocBin base
+    cache) rather than a naive path-separator flatten, which admits
+    collisions: e.g. ``"a/b"`` and ``"a--b"`` both flatten to ``"a--b"``.
+    """
+    return _fileid_hash(fileid) + suffix
 
 
 @dataclass
@@ -188,12 +195,25 @@ class CorrectionStore:
         if token is None:
             raise KeyError(f"no token {token_id!r} in doc for {fileid!r}")
 
+        was = _read_field(token, field_name)
+        # Validate the value actually applies before persisting it, so a
+        # correction can never be silently inert (overlay() would otherwise
+        # fail the same _apply_field() call at every future read with no
+        # way for the caller to discover it).
+        if not _apply_field(token, field_name, value):
+            raise ValueError(
+                f"invalid value {value!r} for field {field_name!r} "
+                f"on token {token.text!r}"
+            )
+        # record() only validates; overlay() is the sole in-memory mutator.
+        _apply_field(token, field_name, was)
+
         record = CorrectionRecord(
             token_id=token_id,
             form=token.text,
             field=field_name,
             value=value,
-            was=_read_field(token, field_name),
+            was=was,
             evidence=evidence,
             ctx=self._sentence_ctx(doc, token),
         )
@@ -233,6 +253,32 @@ class CorrectionStore:
                 token._.corrected = True
                 applied += 1
         return applied
+
+    def revert(self, fileid: str, doc: Doc) -> int:
+        """Undo an in-memory :meth:`overlay` on *doc*, restoring machine values.
+
+        Used before writing a cached Doc back to the disk base cache (e.g.
+        :meth:`BaseCorpusReader.persist_cache`), so an overlaid, gold-corrected
+        in-memory Doc never contaminates the "silver" DocBin cache. Only
+        touches tokens whose current value still matches the recorded
+        correction, so it's safe to call on a doc the overlay was never
+        applied to (a no-op) or one whose corrections have since drifted.
+        """
+        cset = self.load(fileid)
+        if cset is None or not cset.corrections:
+            return 0
+        by_id = {t._.token_id: t for t in doc if t._.token_id is not None}
+        reverted = 0
+        for rec in cset.corrections:
+            token = by_id.get(rec.token_id)
+            if token is None:
+                continue
+            if _read_field(token, rec.field) != rec.value:
+                continue  # not currently overlaid (or overlay never applied)
+            if _apply_field(token, rec.field, rec.was):
+                token._.corrected = False
+                reverted += 1
+        return reverted
 
     # ------------------------------------------------------------------
     # Re-pointing across tokenization drift
@@ -325,8 +371,9 @@ class CorrectionStore:
         """Build an alignment from a record's stored sentence context vs new_doc.
 
         The stored sentence carries the record's own ``token_id`` at index ``i``
-        (synthetic ids elsewhere); aligning it against the whole new doc lets the
-        target re-point by content even with the old DocBin gone.
+        (synthetic ids elsewhere). Aligning it against the *best-matching
+        sentence* (not the whole doc) avoids mis-anchoring on a repeated
+        formulaic phrase that occurs more than once in the document.
         """
         forms = rec.ctx.get("forms")
         i = rec.ctx.get("i")
@@ -336,7 +383,32 @@ class CorrectionStore:
             TokenRef(rec.token_id if k == i else f"_ctx{k}", f)
             for k, f in enumerate(forms)
         ]
-        return align_section(rec.token_id, old_refs, _refs(new_doc))
+        sent = self._best_matching_sentence(forms, new_doc)
+        if sent is None:
+            return None
+        return align_section(rec.token_id, old_refs, _refs(sent))
+
+    @staticmethod
+    def _best_matching_sentence(forms: list[str], new_doc: Doc):
+        """Return the sentence in *new_doc* most similar to *forms*, or None.
+
+        Guards against aligning a short, repeated context (e.g. a formulaic
+        opening/closing phrase) against the wrong occurrence by scoping the
+        alignment to one sentence instead of the whole document.
+        """
+        best_sent = None
+        best_ratio = 0.0
+        try:
+            sents = list(new_doc.sents)
+        except ValueError:
+            sents = [new_doc[:]]  # no sentence boundaries set; treat as one unit
+        for sent in sents:
+            sent_forms = [t.text for t in sent]
+            ratio = difflib.SequenceMatcher(None, forms, sent_forms).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_sent = sent
+        return best_sent
 
     # ------------------------------------------------------------------
     # Migration ledger (auditable drift trail)

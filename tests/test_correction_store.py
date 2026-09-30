@@ -4,7 +4,10 @@ import pytest
 from spacy.tokens import Doc, Token
 from spacy.vocab import Vocab
 
-from latincyreaders.cache.correction_store import CorrectionStore
+from latincyreaders.cache.correction_store import (
+    CorrectionStore,
+    _fileid_to_filename,
+)
 from latincyreaders.core.base import BaseCorpusReader
 
 
@@ -131,3 +134,42 @@ def test_repoint_quarantines_vanished_word(store, vocab):
     assert (ok, quar) == (0, 1)
     assert store.load("f.tess").count == 0
     assert (store.store_dir / "corrections_unresolved.log").exists()
+
+
+def test_fileid_to_filename_is_collision_free():
+    """A naive slash-flatten scheme maps 'a/b' and 'a--b' to the same
+    filename; the hash-based scheme must not."""
+    a = _fileid_to_filename("a/b", ".corr.json")
+    b = _fileid_to_filename("a--b", ".corr.json")
+    assert a != b
+
+
+def test_ctx_alignment_scopes_to_matching_sentence_not_whole_doc(store, vocab):
+    """A repeated formulaic phrase (two identical sentences) must not let
+    the self-anchoring fallback drift from the correction's own sentence
+    to an unrelated later occurrence of the same words."""
+    words = ["Pax", "et", "amor", ".", "Pax", "et", "amor", "."]
+    doc = Doc(
+        vocab, words=words,
+        spaces=[True, True, False, True, True, True, False, False],
+        sent_starts=[True, False, False, False, True, False, False, False],
+    )
+    sents = list(doc.sents)
+    assert len(sents) == 2
+
+    forms = [t.text for t in sents[0]]
+    best = CorrectionStore._best_matching_sentence(forms, doc)
+    assert best.start == sents[0].start and best.end == sents[0].end
+
+
+def test_record_rejects_invalid_correction_value(store, vocab):
+    """An invalid value must fail loudly at record time, not be silently
+    stored and permanently fail to apply on every future overlay()."""
+    doc = _doc(vocab, ["Arma", "virumque", "cano"])
+    with pytest.raises(ValueError):
+        store.record("f.tess", doc, "t0002", "upos", "not-a-real-upos-tag")
+    assert store.load("f.tess") is None
+
+    # The token itself is left unmutated by the failed validation attempt.
+    token = doc[2]
+    assert token.pos_ != "not-a-real-upos-tag"
