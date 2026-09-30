@@ -81,3 +81,65 @@ def test_base_docbin_stays_silver(reader):
     raw = reader._disk_cache.get(fileid, reader.vocab, generator=None)
     assert raw is not None
     assert raw[0].lemma_ == original  # base is still silver
+
+
+def test_persist_cache_does_not_bake_corrections_into_disk(reader):
+    """persist_cache() force-flushes the in-memory LRU to disk. The LRU entry
+    carries the overlaid gold value (overlay() mutates in place), so a naive
+    flush would write the corrected value into the "silver" DocBin cache."""
+    fileid = reader.fileids()[0]
+    doc = next(reader.docs(fileid))
+    tid = doc[0]._.token_id
+    original = doc[0].lemma_
+    reader.correct(fileid, tid, "lemma", "GOLD_ONLY")
+
+    doc2 = next(reader.docs(fileid))  # LRU hit, overlay applied in place
+    assert doc2[0].lemma_ == "GOLD_ONLY"
+    assert reader._cache[fileid][0].lemma_ == "GOLD_ONLY"  # confirms the risk
+
+    reader.persist_cache()
+
+    # The in-memory doc must still read as corrected afterward...
+    assert reader._cache[fileid][0].lemma_ == "GOLD_ONLY"
+
+    # ...but the disk base cache must still be silver.
+    raw = reader._disk_cache.get(fileid, reader.vocab, generator=None)
+    assert raw is not None
+    assert raw[0].lemma_ == original
+
+
+def test_lru_cached_before_downstream_failure(reader, monkeypatch):
+    """The freshly-annotated doc must be cached before disk_cache.put() runs,
+    so a downstream failure (disk full, permissions) doesn't discard NLP
+    work that already succeeded."""
+    fileid = reader.fileids()[0]
+    reader.clear_cache()
+    reader._disk_cache.clear()
+
+    def boom(*args, **kwargs):
+        raise OSError("simulated disk failure")
+
+    monkeypatch.setattr(reader._disk_cache, "put", boom)
+
+    with pytest.raises(OSError):
+        next(reader.docs(fileid))
+
+    assert fileid in reader._cache  # not lost despite the downstream raise
+
+
+def test_repoint_corrections_invalidates_disk_cache(reader):
+    """repoint_corrections() is documented to force a re-anchor; without
+    invalidating the disk entry, docs() would just re-serve the same
+    (unchanged) cached doc, making the old/new alignment a no-op."""
+    fileid = reader.fileids()[0]
+    doc = next(reader.docs(fileid))
+    tid = doc[0]._.token_id
+    reader.correct(fileid, tid, "lemma", "ANCHORED")
+
+    assert reader._disk_cache.has(fileid)
+    reader.repoint_corrections(fileid)
+    # A fresh disk entry was written by the forced rebuild inside docs().
+    assert reader._disk_cache.has(fileid)
+
+    doc2 = next(reader.docs(fileid))
+    assert doc2[0].lemma_ == "ANCHORED"

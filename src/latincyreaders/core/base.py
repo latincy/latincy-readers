@@ -299,6 +299,11 @@ class BaseCorpusReader(ABC):
             if self._disk_cache is not None else None
         )
         self._cache.pop(fileid, None)
+        if self._disk_cache is not None:
+            # Force a genuine rebuild: a fresh (non-invalidated) disk entry
+            # would just be reloaded as-is, making old_doc and new_doc
+            # identical and the re-point below a no-op.
+            self._disk_cache.invalidate(fileid)
         new_doc = next(self.docs(fileid))
         model_name, model_version = self._active_generator()
         return store.repoint(
@@ -368,6 +373,12 @@ class BaseCorpusReader(ABC):
                     doc._.fileid = fileid
                 self._ensure_token_ids(doc)
 
+                # Cache immediately, before any step that could raise (disk
+                # write, repoint, overlay) — otherwise a failure there would
+                # discard NLP work that already succeeded. Later in-place
+                # mutations still apply, since this is the same object.
+                self._store_lru(fileid, doc)
+
                 if self._disk_cache is not None:
                     self._disk_cache.put(
                         fileid, doc,
@@ -381,7 +392,6 @@ class BaseCorpusReader(ABC):
                 self._repoint_on_rebuild(fileid, doc, old_doc)
                 old_doc = None  # only the first produced doc pairs with the old one
                 self._overlay_corrections(fileid, doc)
-                self._store_lru(fileid, doc)
                 yield doc
 
     def correct(
@@ -772,6 +782,16 @@ class BaseCorpusReader(ABC):
                 doc._.metadata = {**json_metadata, **file_metadata}
                 self._ensure_token_ids(doc)
 
+                # Cache the freshly-annotated doc immediately, before any
+                # disk/canonical write or repoint/overlay step that could
+                # raise — otherwise a failure there would discard NLP work
+                # that already succeeded. Later in-place mutations (repoint,
+                # overlay) still apply, since this is the same object.
+                if self._cache_enabled:
+                    while len(self._cache) >= self._cache_maxsize:
+                        self._cache.popitem(last=False)
+                    self._cache[fileid] = doc
+
                 # Write canonical .conlluc (silver — before overlay)
                 if self._canonical_store is not None:
                     self._canonical_store.save(
@@ -797,10 +817,6 @@ class BaseCorpusReader(ABC):
                 self._repoint_on_rebuild(fileid, doc, old_doc)
                 old_doc = None
                 self._overlay_corrections(fileid, doc)
-                if self._cache_enabled:
-                    while len(self._cache) >= self._cache_maxsize:
-                        self._cache.popitem(last=False)
-                    self._cache[fileid] = doc
 
                 yield doc
 
@@ -820,8 +836,16 @@ class BaseCorpusReader(ABC):
 
         model_name, model_version = self._active_generator()
         generator = f"{model_name}@{model_version}"
+        store = self._get_correction_store()
         count = 0
         for fileid, doc in self._cache.items():
+            # Cached docs may carry an in-memory gold overlay (see
+            # _overlay_corrections); revert it before writing so the disk
+            # base cache never picks up corrected values as if they were
+            # raw model output, then reapply so the live LRU entry is
+            # unaffected.
+            if store is not None:
+                store.revert(fileid, doc)
             self._disk_cache.put(
                 fileid, doc,
                 annotation_level=self._annotation_level.name,
@@ -829,6 +853,8 @@ class BaseCorpusReader(ABC):
                 model_version=model_version,
                 generator=generator,
             )
+            if store is not None:
+                store.overlay(fileid, doc)
             count += 1
         return count
 
