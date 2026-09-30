@@ -89,6 +89,13 @@ def _restore_token_extensions(doc: Doc) -> None:
     legacy_remorph = doc.user_data.pop("_remorph", None)
     legacy_ids = doc.user_data.pop("_token_ids", None)
 
+    # Always register remorph, even when no token in this doc has a
+    # non-default value (the stash payload then omits the key entirely) --
+    # otherwise token._.remorph raises AttributeError on such a doc until
+    # some other doc in the process happens to trigger registration.
+    if not Token.has_extension("remorph"):
+        Token.set_extension("remorph", default=None)
+
     if payload:
         for name, sparse in payload.items():
             if not Token.has_extension(name):
