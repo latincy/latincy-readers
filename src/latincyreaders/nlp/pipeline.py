@@ -86,6 +86,19 @@ def _register_extensions() -> None:
     if not Token.has_extension("ud"):
         Token.set_extension("ud", default=None)
 
+    # Durable opaque token id (e.g. "t0004"), minted at first cache write and
+    # frozen thereafter (re-pointed via cache.migrate on tokenization drift). It
+    # is the join key between the DocBin base cache and the JSON correction layer.
+    # Persisted through DocBin via doc.user_data (see cache/disk.py).
+    if not Token.has_extension("token_id"):
+        Token.set_extension("token_id", default=None)
+
+    # Read-time correction marker: set when a gold correction from the JSON
+    # correction layer has been overlaid onto this token. The base DocBin is
+    # never mutated; this flag lives only on the in-memory Doc.
+    if not Token.has_extension("corrected"):
+        Token.set_extension("corrected", default=False)
+
     # Line-boundary flag: True when this token is the last token on a source line.
     # Set by mark_newlines_from_spans() after line spans are built.
     # In la_core_web_lg the tokenizer collapses \n → space, so this is the only

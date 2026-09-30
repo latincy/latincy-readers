@@ -55,6 +55,9 @@ from latincyreaders.readers.tei import TEIReader, PerseusReader
 from latincyreaders.readers.digilibt import DigilibLTReader
 from latincyreaders.readers.pta import PTAReader
 from latincyreaders.readers.csel import CSELReader
+from latincyreaders.readers.edh import EDHReader
+from latincyreaders.readers.formulae import FormulaeReader
+from latincyreaders.readers.epistolae import EpistolaeReader
 from latincyreaders.readers.camena import CamenaReader
 from latincyreaders.readers.txtdown import TxtdownReader
 from latincyreaders.readers.wikisource import WikiSourceReader
@@ -73,7 +76,7 @@ from latincyreaders.nlp.pipeline import mark_newlines_from_spans
 from latincyreaders.utils.metadata import MetadataManager
 from latincyreaders.cache import CacheConfig, DiskCache, CanonicalAnnotationStore, CanonicalConfig
 
-__version__ = "1.7.0"
+__version__ = "1.9.0"
 __all__ = [
     # Readers
     "TesseraeReader",
@@ -86,6 +89,9 @@ __all__ = [
     "DigilibLTReader",
     "PTAReader",
     "CSELReader",
+    "EDHReader",
+    "FormulaeReader",
+    "EpistolaeReader",
     "CamenaReader",
     "TxtdownReader",
     "WikiSourceReader",

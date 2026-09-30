@@ -169,3 +169,6 @@ cli/cli_output/*
 
 # Git worktrees
 .worktrees/
+
+# Scratch/temporary session files
+scratch/

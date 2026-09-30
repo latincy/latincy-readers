@@ -1,6 +1,6 @@
 <img src="https://raw.githubusercontent.com/latincy/latincy-readers/main/assets/latincy-readers-logo.jpg" alt="LatinCy Readers" width="400">
 
-[![PyPI version](https://img.shields.io/badge/pypi-v1.7.0-orange.svg)](https://pypi.org/project/latincy-readers/)
+[![PyPI version](https://img.shields.io/badge/pypi-v1.9.0-orange.svg)](https://pypi.org/project/latincy-readers/)
 [![Python versions](https://img.shields.io/pypi/pyversions/latincy-readers.svg)](https://pypi.org/project/latincy-readers/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
@@ -331,6 +331,76 @@ config = CacheConfig(
 # Time-to-live (auto-expire after N days)
 config = CacheConfig(persist=True, collection="tesserae", ttl_days=30)
 ```
+
+#### Model-version awareness
+
+Cached annotations are stamped with the model that produced them (`model_name` +
+`model_version`). The DocBin cache is treated as a **stamp-keyed ephemeral layer**:
+if you upgrade the LatinCy model (say `la_core_web_lg` 3.9.4 → 3.9.6), the stamp no
+longer matches, so the stale blob is discarded and the document is transparently
+re-annotated with the new model. You never get sentence boundaries or tags from an
+old model without knowing it.
+
+The canonical `.conlluc` store (community-corrected, shipped with a corpus) is more
+valuable and is **not** thrown away automatically. Instead, loading a `.conlluc`
+built by a different model emits a warning so you can decide whether to rebuild:
+
+```python
+import warnings
+from latincyreaders.warnings import AnnotationModelMismatchWarning
+
+# ... reading docs whose canonical annotations predate your active model ...
+# AnnotationModelMismatchWarning: canonical annotations for 'vergil.aen.tess'
+#   were built with la_core_web_lg 3.9.4; active model is la_core_web_lg 3.9.6.
+#   Boundaries/tags may be stale. Rebuild the canonical store (or delete the
+#   .conlluc to regenerate) if you need annotations from the active model.
+
+# Escalate to an error if a version mismatch should never pass silently:
+warnings.simplefilter("error", AnnotationModelMismatchWarning)
+```
+
+Cache entries written before v1.8.0 carry no stamp and are rebuilt once on first
+access — no manual cache deletion needed.
+
+### Correcting Annotations
+
+NLP output has errors. You can lock in corrections that make the cache trustworthy
+and double as a training-ready record of human judgements. Corrections are a small
+JSON overlay on the compact DocBin base cache, linked by durable opaque token ids:
+
+```python
+from latincyreaders import TesseraeReader, AnnotationLevel
+from latincyreaders.cache.disk import CacheConfig
+
+reader = TesseraeReader(
+    annotation_level=AnnotationLevel.FULL,
+    cache_config=CacheConfig(persist=True, collection="tesserae"),
+)
+
+doc = next(reader.docs("vergil.aeneid.part.1.tess"))
+tok = doc[0]
+
+# Lock in a lemma fix, keyed by the token's durable id.
+reader.correct(
+    "vergil.aeneid.part.1.tess", tok._.token_id,
+    "lemma", "arma", evidence="clearly the noun here",
+)
+
+# Every later read overlays the gold value; the token is flagged.
+doc = next(reader.docs("vergil.aeneid.part.1.tess"))
+assert doc[0].lemma_ == "arma"
+assert doc[0]._.corrected is True
+```
+
+Corrections (fields: `lemma`, `upos`, `xpos`, `feats`, `deprel`) are stored
+**outside** the DocBin cache — in `~/latincy_data/corrections/<collection>/` by
+default, or a directory you pass as `corrections_dir` — so they survive
+`clear_cache()` and full re-annotation. The base DocBin is never mutated: it stays
+"silver," and each correction records the machine value it overrode. When a model
+upgrade or source edit re-tokenizes a text, corrections are re-pointed onto the new
+tokenization (verified by surface form); anything that can't be placed safely is
+quarantined to `corrections_unresolved.log` for manual review rather than
+mis-applied.
 
 ### Annotation Levels
 

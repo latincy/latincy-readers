@@ -190,6 +190,28 @@ class TestRemorphRoundtrip:
         assert loaded is not None
         assert loaded[0].text == "test"
 
+    def test_remorph_registered_even_when_all_tokens_default(self, cache):
+        """A doc with no non-default remorph values must still register the
+        extension on load -- the stash payload sparsely omits the key
+        entirely when every token is at default, and this must not leave
+        token._.remorph unregistered (would raise AttributeError) for a
+        doc that happens to be the first one loaded in the process."""
+        from spacy.tokens import Token
+
+        if Token.has_extension("remorph"):
+            Token.remove_extension("remorph")
+
+        vocab = Vocab()
+        doc = Doc(vocab, words=["test"], spaces=[False])
+        cache.put("no_remorph2.tess", doc)  # nothing sets remorph -> sparse
+
+        assert not Token.has_extension("remorph")  # confirm test precondition
+
+        loaded = cache.get("no_remorph2.tess", vocab)
+        assert loaded is not None
+        assert Token.has_extension("remorph")
+        assert loaded[0]._.remorph is None  # no AttributeError
+
 
 class TestFileidHash:
     def test_deterministic(self):
