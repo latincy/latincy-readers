@@ -506,9 +506,9 @@ python cli/vector_search.py stats
 
 - Tesserae Latin Corpus
   - Coffee, Neil, Jean-Pierre Koenig, Shakthi Poornima, Roelant Ossewaarde, Christopher Forstall, and Sarah Jacobson. 2012. "Intertextuality in the Digital Age." *Transactions of the American Philological Association* 142 (2): 383–422. https://doi.org/10.1353/apa.2012.0010.
-  - Tesserae Project and Classical Language Toolkit. 2019. *LatinCy Tesserae Latin Corpus*. Edited by Patrick J. Burns. https://github.com/latincy/lat_text_tesserae.
+  - Tesserae Project. 2026. *LatinCy Tesserae Latin Corpus*. Version 0.6.1. Edited by Patrick J. Burns and Classical Language Toolkit. https://github.com/latincy/lat_text_tesserae.
 - Tesserae Greek Corpus
-  - Tesserae Project and Classical Language Toolkit. 2022. *LatinCy Tesserae Ancient Greek Corpus*. Edited by Patrick J. Burns. https://github.com/latincy/grc_text_tesserae.
+  - Tesserae Project. 2026. *LatinCy Tesserae Ancient Greek Corpus*. Version 0.7.1. Edited by Patrick J. Burns and Classical Language Toolkit. https://github.com/latincy/grc_text_tesserae.
 - Perseus Digital Library TEI
   - Cerrato, Lisa, et al. 2026. *PerseusDL/canonical-latinLit*. Version 0.0.33195683883. Zenodo. https://doi.org/10.5281/zenodo.22149018.
 - Latin Library
