@@ -7,8 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-02
+
 ### Added
 
+- **Gold correction layer.** NLP annotations can now be corrected and the fixes
+  *locked in*, so a cached text carries trustworthy annotations and a
+  training-ready record of human judgements. `reader.correct(fileid, token_id,
+  field, value, evidence=...)` records a correction; it is applied as a read-time
+  overlay on every subsequent `docs()` call. Corrections live in a durable store
+  (`~/latincy_data/corrections/<collection>/`, or a `corrections_dir` you pass)
+  **separate from the DocBin cache**, so they survive `clear_cache()` and full
+  re-annotation. Supported fields: `lemma`, `upos`, `xpos`, `feats`, `deprel`.
+- **Durable opaque token ids** (`Token._.token_id`, e.g. `t0042`) — the join key
+  between the DocBin base cache and the correction layer. Minted positionally,
+  persisted through DocBin via `user_data`, and surfaced in `.conlluc` exports as
+  `TokenId=` in the MISC column.
+- **Token-drift migration** (`latincyreaders.cache.migrate`) — a pure form-anchored
+  aligner (ported from latincy-viewer) that re-points corrections across
+  tokenization changes (split/merge/shift), verifying each remap against the
+  recorded surface form and quarantining anything that cannot be placed safely to
+  `corrections_unresolved.log` rather than mis-applying it.
+- **Automatic re-pointing on rebuild.** When a model upgrade (generator-stamp
+  mismatch) rebuilds a text's DocBin base and the tokenization changed, its
+  corrections are re-pointed onto the new tokens automatically — the pre-rebuild
+  DocBin is captured (`DiskCache.load_raw`) as the alignment source. Force it
+  explicitly with `reader.repoint_corrections(fileid)`.
+- **Migration ledger.** Each drift re-pointing is recorded as a revision
+  (`migrations.jsonl` + `head.json` in the correction store) capturing the
+  `from → to` generator, revision number, and repointed/quarantined counts —
+  an auditable trail of "this collection was migrated from lg-3.9.4 to 3.9.6."
+  Inspect via `CorrectionStore.migrations()`.
 - **EDHReader, FormulaeReader, EpistolaeReader.** None of the three download the
   corpus — `root` must point at a local checkout the user has acquired
   themselves. Designed for use with the following open collections:
@@ -18,6 +47,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (CC BY 4.0).
   - `EpistolaeReader` — Epistolae medieval women's Latin letters, Hugo
     Markdown source (CC BY-NC-SA 4.0).
+
+### Changed
+
+- **Corrections coexist with the base, never overwrite it.** The overlay surfaces
+  the gold value on the in-memory Doc and flags `Token._.corrected`; the DocBin
+  base cache is never mutated (it stays silver), and the correction record keeps
+  the machine value it overrode in `was`.
+- Local `scratch/` working files are now excluded from git and from the
+  sdist (previously picked up by the build regardless of git-tracking,
+  since packaging is filesystem-based, not git-aware).
+- README: Readers table and Corpora Supported now list EDHReader,
+  FormulaeReader, EpistolaeReader and WikiSourceReader; Bibliography adds a
+  Collections section with references for each supported corpus.
 
 ### Fixed
 
@@ -61,51 +103,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for a doc where every token is at the default (nothing to restore) —
   previously such a doc could leave the extension unregistered
   process-wide.
-
-### Changed
-
-- Local `scratch/` working files are now excluded from git and from the
-  sdist (previously picked up by the build regardless of git-tracking,
-  since packaging is filesystem-based, not git-aware).
-
-## [1.9.0] - 2026-07-26
-
-### Added
-
-- **Gold correction layer.** NLP annotations can now be corrected and the fixes
-  *locked in*, so a cached text carries trustworthy annotations and a
-  training-ready record of human judgements. `reader.correct(fileid, token_id,
-  field, value, evidence=...)` records a correction; it is applied as a read-time
-  overlay on every subsequent `docs()` call. Corrections live in a durable store
-  (`~/latincy_data/corrections/<collection>/`, or a `corrections_dir` you pass)
-  **separate from the DocBin cache**, so they survive `clear_cache()` and full
-  re-annotation. Supported fields: `lemma`, `upos`, `xpos`, `feats`, `deprel`.
-- **Durable opaque token ids** (`Token._.token_id`, e.g. `t0042`) — the join key
-  between the DocBin base cache and the correction layer. Minted positionally,
-  persisted through DocBin via `user_data`, and surfaced in `.conlluc` exports as
-  `TokenId=` in the MISC column.
-- **Token-drift migration** (`latincyreaders.cache.migrate`) — a pure form-anchored
-  aligner (ported from latincy-viewer) that re-points corrections across
-  tokenization changes (split/merge/shift), verifying each remap against the
-  recorded surface form and quarantining anything that cannot be placed safely to
-  `corrections_unresolved.log` rather than mis-applying it.
-- **Automatic re-pointing on rebuild.** When a model upgrade (generator-stamp
-  mismatch) rebuilds a text's DocBin base and the tokenization changed, its
-  corrections are re-pointed onto the new tokens automatically — the pre-rebuild
-  DocBin is captured (`DiskCache.load_raw`) as the alignment source. Force it
-  explicitly with `reader.repoint_corrections(fileid)`.
-- **Migration ledger.** Each drift re-pointing is recorded as a revision
-  (`migrations.jsonl` + `head.json` in the correction store) capturing the
-  `from → to` generator, revision number, and repointed/quarantined counts —
-  an auditable trail of "this collection was migrated from lg-3.9.4 to 3.9.6."
-  Inspect via `CorrectionStore.migrations()`.
-
-### Changed
-
-- **Corrections coexist with the base, never overwrite it.** The overlay surfaces
-  the gold value on the in-memory Doc and flags `Token._.corrected`; the DocBin
-  base cache is never mutated (it stays silver), and the correction record keeps
-  the machine value it overrode in `was`.
 
 ### Notes
 

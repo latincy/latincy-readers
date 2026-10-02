@@ -7,7 +7,7 @@
 
 **Corpus readers for Latin and Ancient Greek texts with LatinCy NLP integration.**
 
-`latincy-readers` provides unified access to classical texts—from the Tesserae corpus to Perseus to the Patristic Text Archive—with automatic NLP processing via [LatinCy](https://github.com/diyclassics/latincy) spaCy models.
+`latincy-readers` provides unified access to classical texts—from the Tesserae corpus to Perseus to the Patristic Text Archive and more—with automatic NLP processing via [LatinCy](https://github.com/diyclassics/latincy) spaCy models.
 
 ## Installation
 
@@ -66,8 +66,8 @@ for text in reader.texts():
 
 | Reader | Format | Auto-Download | Description |
 |--------|--------|---------------|-------------|
-| `TesseraeReader` | `.tess` | Yes | CLTK Latin Tesserae corpus |
-| `GreekTesseraeReader` | `.tess` | Yes | CLTK Greek Tesserae corpus |
+| `TesseraeReader` | `.tess` | Yes | LatinCy Latin Tesserae corpus |
+| `GreekTesseraeReader` | `.tess` | Yes | LatinCy Greek Tesserae corpus |
 | `PlaintextReader` | `.txt` | No | Plain text files |
 | `LatinLibraryReader` | `.txt` | Yes | Latin Library corpus |
 | `TEIReader` | `.xml` | No | TEI-XML documents |
@@ -76,7 +76,11 @@ for text in reader.texts():
 | `DigilibLTReader` | `.xml` | No | digilibLT Late-Antique Latin TEI corpus |
 | `PTAReader` | `.xml` | Yes | Patristic Text Archive (Greek & Latin) |
 | `CSELReader` | `.xml` | No | Corpus Scriptorum Ecclesiasticorum Latinorum |
+| `EDHReader` | `.xml` | No | Epigraphic Database Heidelberg EpiDoc inscriptions |
+| `FormulaeReader` | `.xml` | No | Formulae–Litterae–Chartae TEI charters |
+| `EpistolaeReader` | `.html.md` | No | Epistolae medieval women's Latin letters |
 | `ProjectGutenbergReader` | `.txt` | Yes (fetch) | Project Gutenberg plain-text files |
+| `WikiSourceReader` | `.wiki` | Yes (fetch) | Latin Wikisource wikitext |
 | `TxtdownReader` | `.txtd` | No | Txtdown format: citations, critical markup, speaker & cross-source quotation |
 | `UDReader` | `.conllu` | No | Universal Dependencies CoNLL-U |
 | `LatinUDReader` | `.conllu` | Yes | All 6 Latin UD treebanks |
@@ -456,7 +460,7 @@ if not result.is_valid:
 
 ## Corpora Supported
 
-- [Tesserae Latin Corpus](https://github.com/cltk/lat_text_tesserae)
+- [Tesserae Latin Corpus](https://github.com/latincy/lat_text_tesserae)
 - [Tesserae Greek Corpus](https://github.com/cltk/grc_text_tesserae)
 - [Perseus Digital Library TEI](https://www.perseus.tufts.edu/)
 - [Latin Library](https://github.com/cltk/lat_text_latin_library)
@@ -464,7 +468,11 @@ if not result.is_valid:
 - [digilibLT](http://digiliblt.uniupo.it) (Digital Library of Late-Antique Latin Texts)
 - [Patristic Text Archive](https://pta.bbaw.de) (PTA — Greek and Latin patristic texts, CC-BY 4.0)
 - [Corpus Scriptorum Ecclesiasticorum Latinorum](https://github.com/OpenGreekAndLatin/csel-dev) (Open Greek and Latin Project, CC-BY-SA 4.0)
+- [Epigraphic Database Heidelberg](https://github.com/epigraphic-database-heidelberg/data) (EDH — EpiDoc TEI-XML, CC BY-SA 4.0)
+- [Formulae–Litterae–Chartae](https://github.com/Formulae-Litterae-Chartae/formulae-open) (TEI-XML charters, CC BY 4.0)
+- [Epistolae](https://github.com/ccnmtl/epistolae-hugo) (medieval women's Latin letters, Hugo Markdown, CC BY-NC-SA 4.0)
 - [Project Gutenberg](https://www.gutenberg.org) (plain-text, fetched by ID)
+- [Latin Wikisource](https://la.wikisource.org) (wikitext, fetched by page title)
 - [Universal Dependencies Latin Treebanks](https://universaldependencies.org/) (PROIEL, Perseus, ITTB, LLCT, UDante, CIRCSE)
 - Any plaintext, TEI-XML, or CoNLL-U collection
 
@@ -489,8 +497,57 @@ python cli/vector_search.py stats
 
 ## Bibliography
 
+### Method
+
 - Bird, S., E. Loper, and E. Klein. 2009. *Natural Language Processing with Python*. O'Reilly: Sebastopol, CA.
 - Bengfort, Benjamin, Rebecca Bilbro, and Tony Ojeda. 2018. *Applied Text Analysis with Python: Enabling Language-Aware Data Products with Machine Learning*. O'Reilly: Sebastopol, CA.
+
+### Collections
+
+- Tesserae Latin Corpus
+  - Coffee, Neil, Jean-Pierre Koenig, Shakthi Poornima, Roelant Ossewaarde, Christopher Forstall, and Sarah Jacobson. 2012. "Intertextuality in the Digital Age." *Transactions of the American Philological Association* 142 (2): 383–422. https://doi.org/10.1353/apa.2012.0010.
+  - Tesserae Project and Classical Language Toolkit. 2019. *LatinCy Tesserae Latin Corpus*. Edited by Patrick J. Burns. https://github.com/latincy/lat_text_tesserae.
+- Tesserae Greek Corpus
+  - Tesserae Project and Classical Language Toolkit. 2022. *LatinCy Tesserae Ancient Greek Corpus*. Edited by Patrick J. Burns. https://github.com/latincy/grc_text_tesserae.
+- Perseus Digital Library TEI
+  - Cerrato, Lisa, et al. 2026. *PerseusDL/canonical-latinLit*. Version 0.0.33195683883. Zenodo. https://doi.org/10.5281/zenodo.22149018.
+- Latin Library
+  - *The Latin Library*. https://www.thelatinlibrary.com. Via the CLTK repository: https://github.com/cltk/lat_text_latin_library.
+- CAMENA Neo-Latin
+  - *CAMENA: Corpus Automatum Multiplex Electorum Neolatinitatis Auctorum*. Directed by Wilhelm Kühlmann. Heidelberg and Mannheim, 1999–2013. GitHub archive by Neven Jovanović, 2016. https://github.com/nevenjovanovic/camena-neolatinlit.
+  - Schibel, Wolfgang, and Jeffrey A. Rydberg-Cox. 2006. "Early Modern Culture in a Comprehensive Digital Library." *D-Lib Magazine* 12 (3). https://doi.org/10.1045/march2006-schibel.
+- digilibLT
+  - Borgna, Alice. 2017. "From Ancient Texts to Maps (and Back Again) in the Digital World. The DigilibLT Project." *Revista de Humanidades Digitales* 1: 296–313. https://doi.org/10.5944/rhd.vol.1.2017.16784.
+  - Cattaneo, Gianmario, and Nadia Rosso. 2026. "DigilibLT: una biblioteca digitale." *Umanistica Digitale* 23: 23–30. https://doi.org/10.60923/issn.2532-8816/23594.
+- Patristic Text Archive
+  - von Stockhausen, Annette. 2024. *Patristisches Textarchiv. Ein Open Access-Archiv antiker christlicher Texte*. Version 1.1.12315518284. Zenodo. https://doi.org/10.5281/zenodo.14444959.
+- Corpus Scriptorum Ecclesiasticorum Latinorum
+  - Franzini, Greta, et al. 2022. *csel-dev*. Version 1.0.427. Zenodo. https://doi.org/10.5281/zenodo.6599925.
+- Epigraphic Database Heidelberg
+  - Grieshaber, Frank. 2019. "Epigraphic Database Heidelberg – Data Reuse Options." Heidelberg University Library. https://doi.org/10.11588/heidok.00026599.
+- Formulae–Litterae–Chartae
+  - Munson, Matthew. 2023. *formulae-open*. Zenodo. https://doi.org/10.5281/zenodo.10082666.
+- Epistolae
+  - Ferrante, Joan. 2014. *Epistolae: Medieval Women's Latin Letters*. Columbia University Libraries. https://doi.org/10.7916/RK1E-8X32.
+- Project Gutenberg
+  - *Project Gutenberg*. Project Gutenberg Literary Archive Foundation. https://www.gutenberg.org.
+- Latin Wikisource
+  - *Latin Wikisource*. Wikimedia Foundation. https://la.wikisource.org.
+- Universal Dependencies Latin Treebanks
+  - Nivre, Joakim, Marie-Catherine de Marneffe, Filip Ginter, Jan Hajič, Christopher D. Manning, Sampo Pyysalo, Sebastian Schuster, Francis Tyers, and Daniel Zeman. 2020. "Universal Dependencies v2: An Evergrowing Multilingual Treebank Collection." In *Proceedings of the Twelfth Language Resources and Evaluation Conference*, 4034–4043. Marseille: European Language Resources Association. https://aclanthology.org/2020.lrec-1.497/.
+  - Gamba, Federica, and Daniel Zeman. 2023. "Universalising Latin Universal Dependencies: a harmonisation of Latin treebanks in UD." In *Proceedings of the Sixth Workshop on Universal Dependencies (UDW, GURT/SyntaxFest 2023)*, 7–16. Washington, D.C.: Association for Computational Linguistics. https://aclanthology.org/2023.udw-1.2/.
+  - PROIEL
+    - Haug, Dag T. T., and Marius L. Jøhndal. 2008. "Creating a Parallel Treebank of the Old Indo-European Bible Translations." In *Proceedings of the Second Workshop on Language Technology for Cultural Heritage Data (LaTeCH 2008)*, edited by Caroline Sporleder and Kiril Ribarov, 27–34.
+  - Perseus
+    - Bamman, David, and Gregory Crane. 2011. "The Ancient Greek and Latin Dependency Treebanks." In *Language Technology for Cultural Heritage*, edited by Caroline Sporleder, Antal van den Bosch, and Kalliopi Zervanou, 79–98. Berlin, Heidelberg: Springer. https://doi.org/10.1007/978-3-642-20227-8_5.
+  - ITTB
+    - Cecchini, Flavio Massimiliano, Marco Passarotti, Paola Marongiu, and Daniel Zeman. 2018. "Challenges in Converting the Index Thomisticus Treebank into Universal Dependencies." In *Proceedings of the Second Workshop on Universal Dependencies (UDW 2018)*, 27–36. Brussels. https://doi.org/10.18653/v1/W18-6004.
+  - LLCT
+    - Cecchini, Flavio Massimiliano, Timo Korkiakangas, and Marco Passarotti. 2020. "A New Latin Treebank for Universal Dependencies: Charters between Ancient Latin and Romance Languages." In *Proceedings of the Twelfth Language Resources and Evaluation Conference*, 933–942. Marseille: European Language Resources Association. https://aclanthology.org/2020.lrec-1.117/.
+  - UDante
+    - Cecchini, Flavio Massimiliano, Rachele Sprugnoli, Giovanni Moretti, and Marco Passarotti. 2020. "UDante: First Steps Towards the Universal Dependencies Treebank of Dante's Latin Works." In *Proceedings of the Seventh Italian Conference on Computational Linguistics*, edited by Johanna Monti, Felice Dell'Orletta, and Fabio Tamburini. CEUR Workshop Proceedings 2769. https://ceur-ws.org/Vol-2769/paper_14.pdf.
+  - CIRCSE
+    - *UD_Latin-CIRCSE*. CIRCSE Research Centre, Milan. https://github.com/UniversalDependencies/UD_Latin-CIRCSE.
 
 ---
 
