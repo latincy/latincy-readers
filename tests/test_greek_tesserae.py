@@ -56,8 +56,52 @@ class TestGreekTesseraeReader:
     # -------------------------------------------------------------------------
 
     def test_corpus_url(self):
-        """CORPUS_URL points to Greek Tesserae repo."""
-        assert "grc_text_tesserae" in GreekTesseraeReader.CORPUS_URL
+        """CORPUS_URL points to the LatinCy Greek Tesserae repo."""
+        assert GreekTesseraeReader.CORPUS_URL == (
+            "https://github.com/latincy/grc_text_tesserae.git"
+        )
+
+    def test_corpus_version_not_inherited_from_latin(self):
+        """Greek pin is its own, not TesseraeReader's Latin pin."""
+        from latincyreaders import TesseraeReader
+
+        assert "CORPUS_VERSION" in vars(GreekTesseraeReader)
+        assert GreekTesseraeReader.CORPUS_VERSION != TesseraeReader.CORPUS_VERSION
+
+    def test_version_mismatch_warning_names_greek_env_var(
+        self, greek_tesserae_dir, monkeypatch
+    ):
+        """Mismatch warning points to GRC_TESSERAE_PATH, not TESSERAE_PATH."""
+        monkeypatch.setattr(
+            GreekTesseraeReader,
+            "_get_default_root",
+            classmethod(lambda cls, *a, **k: greek_tesserae_dir),
+        )
+        monkeypatch.setattr(
+            GreekTesseraeReader,
+            "installed_version",
+            classmethod(lambda cls, root=None: "v0.1"),
+        )
+        with pytest.warns(UserWarning) as record:
+            GreekTesseraeReader(annotation_level=AnnotationLevel.NONE)
+        msgs = [str(w.message) for w in record if "requested" in str(w.message)]
+        assert msgs and "GRC_TESSERAE_PATH" in msgs[0]
+
+    def test_installed_version_finds_checkout_above_texts_dir(self, tmp_path):
+        """Root is the clone's texts/ subdir; version comes from the clone."""
+        import subprocess
+
+        repo = tmp_path / "texts"
+        (repo / "texts").mkdir(parents=True)
+        (repo / "texts" / "a.tess").write_text("<x 1.1> y\n", encoding="utf-8")
+        git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+        subprocess.run([*git, "add", "."], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "c"], check=True)
+        subprocess.run([*git, "tag", "v9.9.9"], check=True)
+
+        assert GreekTesseraeReader.installed_version(repo / "texts") == "v9.9.9"
+        assert GreekTesseraeReader.installed_version(repo) == "v9.9.9"
 
     def test_env_var(self):
         """ENV_VAR is set for Greek corpus."""

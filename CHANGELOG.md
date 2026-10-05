@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README: Readers table and Corpora Supported now list EDHReader,
   FormulaeReader, EpistolaeReader and WikiSourceReader; Bibliography adds a
   Collections section with references for each supported corpus.
+- `GreekTesseraeReader` now downloads the LatinCy fork
+  (`github.com/latincy/grc_text_tesserae`), pinned to `v0.7.2`, instead of
+  the CLTK upstream. An existing local copy is still used, with a warning
+  if its version differs.
+- `TesseraeReader` corpus pin: `v0.6.1` → `v0.7.0`.
 
 ### Fixed
 
@@ -101,6 +106,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for a doc where every token is at the default (nothing to restore) —
   previously such a doc could leave the extension unregistered
   process-wide.
+- **`GreekTesseraeReader` fresh download no longer fails.** It inherited
+  `TesseraeReader`'s Latin corpus pin (`v0.6.1`) and cloned with
+  `--branch v0.6.1`, a tag the Greek repository does not have.
+- Tesserae corpus version-mismatch warning names the reader's own environment
+  variable (`GRC_TESSERAE_PATH` for `GreekTesseraeReader`; was always
+  `TESSERAE_PATH`).
+- `GreekTesseraeReader.corpus_version` / `installed_version()` returned `None`
+  for a downloaded corpus (the reader's root is the clone's `texts/`
+  subdirectory, so `.git` was not found), which also suppressed the
+  version-mismatch warning. Now reports the installed tag.
 
 ### Notes
 

@@ -106,7 +106,7 @@ TesseraeReader.download("/path/to/destination")
 
 ### Ancient Greek (GreekTesseraeReader)
 
-Read Ancient Greek texts from the CLTK Greek Tesserae corpus using LatinCy Greek NLP models:
+Read Ancient Greek texts from the LatinCy Greek Tesserae corpus using LatinCy Greek NLP models:
 
 ```python
 from latincyreaders import GreekTesseraeReader, AnnotationLevel
@@ -461,7 +461,7 @@ if not result.is_valid:
 ## Corpora Supported
 
 - [Tesserae Latin Corpus](https://github.com/latincy/lat_text_tesserae)
-- [Tesserae Greek Corpus](https://github.com/cltk/grc_text_tesserae)
+- [Tesserae Greek Corpus](https://github.com/latincy/grc_text_tesserae)
 - [Perseus Digital Library TEI](https://www.perseus.tufts.edu/)
 - [Latin Library](https://github.com/cltk/lat_text_latin_library)
 - [CAMENA Neo-Latin](https://github.com/nevenjovanovic/camena-neolatinlit)
@@ -506,9 +506,9 @@ python cli/vector_search.py stats
 
 - Tesserae Latin Corpus
   - Coffee, Neil, Jean-Pierre Koenig, Shakthi Poornima, Roelant Ossewaarde, Christopher Forstall, and Sarah Jacobson. 2012. "Intertextuality in the Digital Age." *Transactions of the American Philological Association* 142 (2): 383–422. https://doi.org/10.1353/apa.2012.0010.
-  - Tesserae Project. 2026. *LatinCy Tesserae Latin Corpus*. Version 0.6.1. Edited by Patrick J. Burns and Classical Language Toolkit. https://github.com/latincy/lat_text_tesserae.
+  - Tesserae Project. 2026. *LatinCy Tesserae Latin Corpus*. Version 0.7.0. Edited by Patrick J. Burns and Classical Language Toolkit. https://github.com/latincy/lat_text_tesserae.
 - Tesserae Greek Corpus
-  - Tesserae Project. 2026. *LatinCy Tesserae Ancient Greek Corpus*. Version 0.7.1. Edited by Patrick J. Burns and Classical Language Toolkit. https://github.com/latincy/grc_text_tesserae.
+  - Tesserae Project. 2026. *LatinCy Tesserae Ancient Greek Corpus*. Version 0.7.2. Edited by Patrick J. Burns and Classical Language Toolkit. https://github.com/latincy/grc_text_tesserae.
 - Perseus Digital Library TEI
   - Cerrato, Lisa, et al. 2026. *PerseusDL/canonical-latinLit*. Version 0.0.33195683883. Zenodo. https://doi.org/10.5281/zenodo.22149018.
 - Latin Library

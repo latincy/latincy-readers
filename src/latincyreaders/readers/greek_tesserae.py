@@ -1,6 +1,6 @@
 """Greek Tesserae corpus reader.
 
-Reads Ancient Greek texts in the Tesserae format from the CLTK Greek
+Reads Ancient Greek texts in the Tesserae format from the LatinCy Greek
 Tesserae corpus (grc_text_tesserae). Uses the same `.tess` citation
 format as the Latin Tesserae corpus.
 
@@ -54,7 +54,9 @@ class GreekTesseraeReader(TesseraeReader):
         ...         print(f"{line._.citation}: {line.text[:50]}...")
     """
 
-    CORPUS_URL = "https://github.com/cltk/grc_text_tesserae.git"
+    CORPUS_URL = "https://github.com/latincy/grc_text_tesserae.git"
+    # Own pin: must not inherit TesseraeReader's (Latin) CORPUS_VERSION.
+    CORPUS_VERSION = "v0.7.2"
     ENV_VAR = "GRC_TESSERAE_PATH"
     # The repo is cloned to grc_text_tesserae/texts, but .tess files
     # are inside a texts/ subdirectory within the repo
@@ -66,6 +68,18 @@ class GreekTesseraeReader(TesseraeReader):
     def _clone_root(cls) -> Path:
         """Return the path where the repo should be cloned."""
         return LATINCY_DATA / cls._CLONE_SUBDIR
+
+    @classmethod
+    def installed_version(cls, root: Path | None = None) -> str | None:
+        """Return the corpus version on disk.
+
+        The reader's root is the repo's ``texts/`` subdirectory, so the git
+        checkout is one level up; look there when root itself is not one.
+        """
+        root = Path(root) if root is not None else cls.default_root()
+        if not (root / ".git").exists() and (root.parent / ".git").exists():
+            root = root.parent
+        return super().installed_version(root)
 
     @classmethod
     def _get_default_root(
@@ -115,8 +129,7 @@ class GreekTesseraeReader(TesseraeReader):
 
         Args:
             destination: Where to clone the repo. Defaults to clone root.
-            ref: git tag/branch to clone. Defaults to CORPUS_VERSION (None for
-                this corpus, which tracks the upstream default branch).
+            ref: git tag/branch to clone. Defaults to CORPUS_VERSION.
 
         Returns:
             Path to the downloaded corpus texts directory.

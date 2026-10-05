@@ -73,7 +73,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
 
     # Pin to a specific corpus release for reproducibility. Override per-instance
     # with corpus_version=, or set TESSERAE_PATH to use a local checkout.
-    CORPUS_VERSION = "v0.6.1"
+    CORPUS_VERSION = "v0.7.0"
 
     def __init__(
         self,
@@ -151,7 +151,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
         """Warn if the on-disk corpus differs from the requested version.
 
         A re-download is not triggered automatically: removing or relocating an
-        existing corpus is the user's call. Set TESSERAE_PATH or delete the
+        existing corpus is the user's call. Set the reader's ENV_VAR or delete the
         directory to fetch a different version.
         """
         requested = self._requested_corpus_version
@@ -162,7 +162,7 @@ class TesseraeReader(DownloadableCorpusMixin, BaseCorpusReader):
             warnings.warn(
                 f"Tesserae corpus at {root} is {installed!r}, but {requested!r} "
                 f"was requested. Using the existing copy. To get {requested!r}, "
-                f"remove that directory (or set TESSERAE_PATH) and re-create the "
+                f"remove that directory (or set {self.ENV_VAR}) and re-create the "
                 f"reader.",
                 stacklevel=3,
             )
