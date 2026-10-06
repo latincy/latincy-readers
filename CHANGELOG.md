@@ -63,6 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the CLTK upstream. An existing local copy is still used, with a warning
   if its version differs.
 - `TesseraeReader` corpus pin: `v0.6.1` → `v0.7.0`.
+- README model install lines: `la_core_web_lg` 3.9.6 → 3.9.8, `grc_dep_web_lg`
+  3.8.1 → 3.8.4 (test suite run against both).
 
 ### Fixed
 
@@ -116,6 +118,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   for a downloaded corpus (the reader's root is the clone's `texts/`
   subdirectory, so `.git` was not found), which also suppressed the
   version-mismatch warning. Now reports the installed tag.
+- `GreekTesseraeReader` docstring install command named a nonexistent wheel
+  (`grc_dep_web_lg-any-py3-none-any.whl`); now `grc_dep_web_lg-3.8.4`.
 
 ### Notes
 

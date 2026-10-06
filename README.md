@@ -30,10 +30,10 @@ LatinCy NLP models are hosted on Hugging Face and installed separately (mirrorin
 
 ```bash
 # Latin model (la_core_web_lg)
-pip install https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.9.6-py3-none-any.whl
+pip install https://huggingface.co/latincy/la_core_web_lg/resolve/main/la_core_web_lg-3.9.8-py3-none-any.whl
 
 # Ancient Greek model (grc_dep_web_lg)
-pip install https://huggingface.co/latincy/grc_dep_web_lg/resolve/main/grc_dep_web_lg-3.8.1-py3-none-any.whl
+pip install https://huggingface.co/latincy/grc_dep_web_lg/resolve/main/grc_dep_web_lg-3.8.4-py3-none-any.whl
 ```
 
 You can skip model installation if you only need raw text iteration (`AnnotationLevel.NONE`) or rule-based sentence splitting (`AnnotationLevel.MINIMAL`). All other levels require a model.

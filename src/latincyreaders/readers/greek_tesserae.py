@@ -5,7 +5,7 @@ Tesserae corpus (grc_text_tesserae). Uses the same `.tess` citation
 format as the Latin Tesserae corpus.
 
 Requires a LatinCy Greek model for BASIC/FULL annotation levels:
-    pip install https://huggingface.co/latincy/grc_dep_web_lg/resolve/main/grc_dep_web_lg-any-py3-none-any.whl
+    pip install https://huggingface.co/latincy/grc_dep_web_lg/resolve/main/grc_dep_web_lg-3.8.4-py3-none-any.whl
 """
 
 from __future__ import annotations

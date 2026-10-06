@@ -150,6 +150,7 @@ cython_debug/
 
 # Mac OS
 .DS_Store
+Thumbs.db
 
 # Local
 .python-version
