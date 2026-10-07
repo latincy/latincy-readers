@@ -62,6 +62,7 @@ exclude = [
     "uv.lock",
     ".claude/",
     "scratch/",
+    ".github/",
 ]
 
 [tool.ruff]

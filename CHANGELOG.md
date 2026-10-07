@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Local `scratch/` working files are now excluded from git and from the
   sdist (previously picked up by the build regardless of git-tracking,
   since packaging is filesystem-based, not git-aware).
+- `.github/` (CI workflows) is excluded from the sdist.
 - README: Readers table and Corpora Supported now list EDHReader,
   FormulaeReader, EpistolaeReader and WikiSourceReader; Bibliography adds a
   Collections section with references for each supported corpus.
