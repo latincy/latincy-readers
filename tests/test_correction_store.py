@@ -162,6 +162,51 @@ def test_ctx_alignment_scopes_to_matching_sentence_not_whole_doc(store, vocab):
     assert best.start == sents[0].start and best.end == sents[0].end
 
 
+def _two_sentence_doc(vocab, prefix=()):
+    words = [*prefix, "Pax", "et", "amor", ".", "Pax", "et", "amor", "."]
+    n = len(prefix)
+    starts = [k == 0 or k in (n, n + 4) for k in range(len(words))]
+    doc = Doc(
+        vocab, words=words, spaces=[True] * (len(words) - 1) + [False],
+        sent_starts=starts,
+    )
+    BaseCorpusReader._ensure_token_ids(doc)
+    return doc
+
+
+def test_best_matching_sentence_tie_uses_recorded_occurrence(vocab):
+    """Two verbatim-identical sentences tie on ratio; the recorded occurrence
+    must pick the second one when the correction was on the second."""
+    doc = _two_sentence_doc(vocab)
+    sents = list(doc.sents)
+    forms = [t.text for t in sents[1]]
+    best = CorrectionStore._best_matching_sentence(forms, doc, rep=1)
+    assert (best.start, best.end) == (sents[1].start, sents[1].end)
+
+
+def test_best_matching_sentence_missing_occurrence_returns_none(vocab):
+    """The recorded 2nd occurrence is gone: quarantine, don't move to the 1st."""
+    doc = Doc(vocab, words=["Bene", "vale", "."], spaces=[True, False, False],
+              sent_starts=[True, False, False])
+    assert CorrectionStore._best_matching_sentence(["Bene", "vale", "."], doc, rep=1) is None
+
+
+def test_repoint_fallback_keeps_correction_on_second_repeat(store, vocab):
+    """End to end: a correction on the 2nd of two identical sentences, re-pointed
+    via the self-anchoring fallback after a shift, lands on the 2nd occurrence."""
+    old = _two_sentence_doc(vocab)
+    target = old[5]  # "et" in the second sentence
+    store.record("f.tess", old, target._.token_id, "lemma", "ET2")
+    assert store.load("f.tess").corrections[0].ctx["rep"] == 1
+
+    new = _two_sentence_doc(vocab, prefix=("Incipit", "."))  # +2 tokens, +1 sent
+    ok, quar = store.repoint("f.tess", new, old_doc=None)
+    assert (ok, quar) == (1, 0)
+    rec = store.load("f.tess").corrections[0]
+    tok = {t._.token_id: t for t in new}[rec.token_id]
+    assert tok.text == "et" and tok.i == 7  # second sentence, not the first (i=3)
+
+
 def test_record_rejects_invalid_correction_value(store, vocab):
     """An invalid value must fail loudly at record time, not be silently
     stored and permanently fail to apply on every future overlay()."""

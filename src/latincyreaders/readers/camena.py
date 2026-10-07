@@ -134,15 +134,6 @@ class CamenaCorpusReader(DownloadableCorpusMixin, TEIReader):
 
         return None
 
-    def _remove_note_elements(self, element: etree._Element) -> None:
-        """Remove note elements from the given element."""
-        for notes_xpath in [".//note", ".//tei:note"]:
-            try:
-                for note in element.xpath(notes_xpath, namespaces=self.TEI_NS):
-                    note.getparent().remove(note)
-            except Exception:
-                pass
-
     def _extract_text_units(self, body: etree._Element) -> list[str]:
         """Extract text units from body, handling both prose and poetry.
 

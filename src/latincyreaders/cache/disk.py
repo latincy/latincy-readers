@@ -286,6 +286,12 @@ class DiskCache:
         filename = f"{h}.spacy"
         path = self._dir / filename
 
+        if doc.user_data.get("_lr_silver"):
+            # An overlaid doc carries gold values; writing it would contaminate
+            # the silver base cache. Callers must revert() the overlay first.
+            raise ValueError(
+                f"refusing to cache {fileid!r}: doc has gold corrections overlaid"
+            )
         doc_bin = DocBin(store_user_data=True)
         _stash_token_extensions(doc)
         _sanitize_user_data(doc)

@@ -53,6 +53,17 @@ def _today() -> str:
     return datetime.date.today().isoformat()
 
 
+# doc.user_data key holding each overlaid token's pre-overlay (machine) value,
+# keyed "token_id|field". Lets revert() restore exactly what overlay() replaced
+# rather than trusting CorrectionRecord.was (which can be stale after a model
+# upgrade). Removed by revert(), so it never reaches the DocBin cache.
+_SILVER_KEY = "_lr_silver"
+
+
+def _silver_key(token_id: str, field_name: str) -> str:
+    return f"{token_id}|{field_name}"
+
+
 def _fileid_to_filename(fileid: str, suffix: str) -> str:
     """Derive a collision-free filename for a fileid.
 
@@ -76,7 +87,7 @@ class CorrectionRecord:
         agent: ``"human"`` for a hand correction.
         evidence: Free-text justification (optional).
         created: ISO date.
-        ctx: Self-anchor context — ``{"sent": int, "forms": [str, ...], "i": int}``
+        ctx: Self-anchor context — ``{"forms": [str, ...], "i": int, "rep": int}``
             (the enclosing sentence's forms and the target's index within it).
     """
 
@@ -195,7 +206,11 @@ class CorrectionStore:
         if token is None:
             raise KeyError(f"no token {token_id!r} in doc for {fileid!r}")
 
-        was = _read_field(token, field_name)
+        current = _read_field(token, field_name)
+        # On an overlaid doc the token already shows a gold value; provenance
+        # must be the machine value it replaced, not an earlier correction.
+        silver = doc.user_data.get(_SILVER_KEY, {})
+        was = silver.get(_silver_key(token_id, field_name), current)
         # Validate the value actually applies before persisting it, so a
         # correction can never be silently inert (overlay() would otherwise
         # fail the same _apply_field() call at every future read with no
@@ -206,7 +221,7 @@ class CorrectionStore:
                 f"on token {token.text!r}"
             )
         # record() only validates; overlay() is the sole in-memory mutator.
-        _apply_field(token, field_name, was)
+        _apply_field(token, field_name, current)
 
         record = CorrectionRecord(
             token_id=token_id,
@@ -244,12 +259,16 @@ class CorrectionStore:
         if cset is None or not cset.corrections:
             return 0
         by_id = {t._.token_id: t for t in doc if t._.token_id is not None}
+        silver = doc.user_data.setdefault(_SILVER_KEY, {})
         applied = 0
         for rec in cset.corrections:
             token = by_id.get(rec.token_id)
             if token is None or token.text != rec.form:
                 continue
+            key = _silver_key(rec.token_id, rec.field)
+            current = _read_field(token, rec.field)
             if _apply_field(token, rec.field, rec.value):
+                silver.setdefault(key, current)
                 token._.corrected = True
                 applied += 1
         return applied
@@ -259,15 +278,33 @@ class CorrectionStore:
 
         Used before writing a cached Doc back to the disk base cache (e.g.
         :meth:`BaseCorpusReader.persist_cache`), so an overlaid, gold-corrected
-        in-memory Doc never contaminates the "silver" DocBin cache. Only
-        touches tokens whose current value still matches the recorded
-        correction, so it's safe to call on a doc the overlay was never
-        applied to (a no-op) or one whose corrections have since drifted.
+        in-memory Doc never contaminates the "silver" DocBin cache. Restores
+        exactly the values :meth:`overlay` replaced (stashed on the doc), so it
+        does not depend on the current correction records, which may have
+        changed since. A doc with no stash (never overlaid by this version)
+        falls back to the records' ``was``, touching only tokens whose value
+        still matches the record.
         """
+        by_id = {t._.token_id: t for t in doc if t._.token_id is not None}
+        silver = doc.user_data.get(_SILVER_KEY)
+        if silver is not None:
+            # Restore exactly what overlay() replaced. Independent of the current
+            # correction set, so a record changed or deleted since the overlay
+            # (or an unreadable store) cannot leave a gold value in place.
+            reverted = 0
+            for key, original in silver.items():
+                token_id, _, field_name = key.partition("|")
+                token = by_id.get(token_id)
+                if token is not None and _apply_field(token, field_name, original):
+                    token._.corrected = False
+                    reverted += 1
+            del doc.user_data[_SILVER_KEY]
+            return reverted
+
+        # No stash: doc was never overlaid by this version; fall back to records.
         cset = self.load(fileid)
         if cset is None or not cset.corrections:
             return 0
-        by_id = {t._.token_id: t for t in doc if t._.token_id is not None}
         reverted = 0
         for rec in cset.corrections:
             token = by_id.get(rec.token_id)
@@ -316,6 +353,7 @@ class CorrectionStore:
                 fileid, _refs(old_doc), _refs(new_doc)
             )
 
+        occurrences = self._occurrence_index(new_doc)
         for rec in cset.corrections:
             algn = (
                 alignment if alignment is not None
@@ -330,7 +368,7 @@ class CorrectionStore:
                 token = self._find_token(new_doc, rec.token_id)
                 if token is not None:
                     rec.form = token.text
-                    rec.ctx = self._sentence_ctx(new_doc, token)
+                    rec.ctx = self._sentence_ctx(new_doc, token, occurrences)
                 kept.append(rec)
             else:
                 reason = result.reason if result is not None else "no anchor context"
@@ -358,14 +396,38 @@ class CorrectionStore:
         return None
 
     @staticmethod
-    def _sentence_ctx(doc: Doc, token) -> dict[str, Any]:
-        """Capture the target's enclosing-sentence forms + local index."""
+    def _sentence_ctx(doc: Doc, token, occurrences: dict | None = None) -> dict[str, Any]:
+        """Capture the target's enclosing-sentence forms + local index.
+
+        ``rep`` is which occurrence of this exact sentence the target is in
+        (0 = first): it disambiguates verbatim-repeated sentences and, unlike an
+        absolute sentence index, survives sentences added or removed elsewhere.
+        Pass *occurrences* from :meth:`_occurrence_index` when calling per token.
+        """
         try:
             sent = token.sent
         except (ValueError, AttributeError):
             sent = doc[:]
         forms = [t.text for t in sent]
-        return {"forms": forms, "i": token.i - sent.start}
+        if occurrences is None:
+            occurrences = CorrectionStore._occurrence_index(doc)
+        rep = occurrences.get(sent.start, 0)
+        return {"forms": forms, "i": token.i - sent.start, "rep": rep}
+
+    @staticmethod
+    def _occurrence_index(doc: Doc) -> dict[int, int]:
+        """Map each sentence start to its occurrence rank among identical sentences."""
+        try:
+            sents = list(doc.sents)
+        except ValueError:
+            return {}
+        seen: dict[tuple[str, ...], int] = {}
+        index: dict[int, int] = {}
+        for s in sents:
+            key = tuple(t.text for t in s)
+            index[s.start] = seen.get(key, 0)
+            seen[key] = index[s.start] + 1
+        return index
 
     def _ctx_alignment(self, rec: CorrectionRecord, new_doc: Doc):
         """Build an alignment from a record's stored sentence context vs new_doc.
@@ -383,32 +445,40 @@ class CorrectionStore:
             TokenRef(rec.token_id if k == i else f"_ctx{k}", f)
             for k, f in enumerate(forms)
         ]
-        sent = self._best_matching_sentence(forms, new_doc)
+        sent = self._best_matching_sentence(forms, new_doc, rec.ctx.get("rep", 0))
         if sent is None:
             return None
         return align_section(rec.token_id, old_refs, _refs(sent))
 
     @staticmethod
-    def _best_matching_sentence(forms: list[str], new_doc: Doc):
+    def _best_matching_sentence(forms: list[str], new_doc: Doc, rep: int = 0):
         """Return the sentence in *new_doc* most similar to *forms*, or None.
 
         Guards against aligning a short, repeated context (e.g. a formulaic
         opening/closing phrase) against the wrong occurrence by scoping the
-        alignment to one sentence instead of the whole document.
+        alignment to one sentence instead of the whole document. When several
+        sentences tie for best (a verbatim-repeated sentence), *rep* picks
+        which occurrence, in document order; if that occurrence no longer
+        exists, None (the record is quarantined rather than moved).
         """
-        best_sent = None
-        best_ratio = 0.0
         try:
             sents = list(new_doc.sents)
         except ValueError:
             sents = [new_doc[:]]  # no sentence boundaries set; treat as one unit
-        for sent in sents:
-            sent_forms = [t.text for t in sent]
-            ratio = difflib.SequenceMatcher(None, forms, sent_forms).ratio()
-            if ratio > best_ratio:
-                best_ratio = ratio
-                best_sent = sent
-        return best_sent
+        scored = [
+            (
+                difflib.SequenceMatcher(None, forms, [t.text for t in s]).ratio(),
+                s,
+            )
+            for s in sents
+        ]
+        best = max((r for r, _ in scored), default=0.0)
+        if best == 0.0:
+            return None
+        tied = [s for r, s in scored if r == best]
+        if rep >= len(tied):
+            return None  # recorded occurrence gone: quarantine, don't guess
+        return tied[rep]
 
     # ------------------------------------------------------------------
     # Migration ledger (auditable drift trail)

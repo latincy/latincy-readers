@@ -27,6 +27,30 @@ class TestTEIReader:
     # Basic functionality
     # -------------------------------------------------------------------------
 
+    @pytest.mark.parametrize(
+        "body, expected",
+        [
+            # tail after a note with a previous sibling
+            ("<p><w>a</w><note>n</note> b</p>", "a b"),
+            # tail after a note that is the first child (goes to parent.text)
+            ("<p><note>n</note>a b</p>", "a b"),
+            # consecutive notes
+            ("<p>a<note>n1</note> b<note>n2</note> c</p>", "a b c"),
+            # source whitespace is kept exactly; nothing is inserted
+            ("<p>Troiae<note>1</note>, qui</p>", "Troiae, qui"),
+        ],
+    )
+    def test_note_removal_keeps_tail_text(self, reader, body, expected):
+        """Removing <note> keeps the text that follows it (lxml tail)."""
+        from lxml import etree
+
+        root = etree.fromstring(
+            f'<TEI xmlns="http://www.tei-c.org/ns/1.0"><text><body>{body}'
+            "</body></text></TEI>".encode()
+        )
+        out = reader._get_body(root)
+        assert " ".join("".join(out.itertext()).split()) == expected
+
     def test_fileids_returns_list(self, reader):
         """fileids() returns a list of .xml files."""
         fileids = reader.fileids()

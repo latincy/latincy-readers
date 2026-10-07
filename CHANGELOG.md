@@ -120,6 +120,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   version-mismatch warning. Now reports the installed tag.
 - `GreekTesseraeReader` docstring install command named a nonexistent wheel
   (`grc_dep_web_lg-any-py3-none-any.whl`); now `grc_dep_web_lg-3.8.4`.
+- **`<note>` removal no longer deletes the text after each note.** lxml drops
+  an element's tail with the element, so `remove_notes=True` lost running
+  text (e.g. `…<note>y</note> alia` lost "alia"). The surrounding text is
+  kept exactly as in the source. Affects every TEI-based reader (`TEIReader`,
+  `PerseusReader`, `DigilibLTReader`, `PTAReader`, `CSELReader`,
+  `FormulaeReader`) and `CamenaReader`. Docs already in a disk cache keep the
+  old text until that reader's cache is cleared.
+- `persist_cache()` writes back each token's exact pre-overlay value, rather
+  than the correction record's `was`, which could be an earlier gold value (a
+  token corrected twice) or an older model's value. This holds even if the
+  correction record changed, was deleted, or cannot be read after the overlay.
+  A second correction to the same token now keeps the original machine value
+  as `was`. If the disk write fails, the in-memory doc keeps its corrections.
+  `DiskCache.put()` refuses a doc that still has corrections overlaid.
+- Self-anchoring re-point handles verbatim-repeated sentences: a correction on
+  the 2nd occurrence stays on the 2nd (the occurrence is recorded in the
+  correction's context), including when sentences are added before it. If
+  that occurrence no longer exists, the correction is quarantined rather than
+  moved to another copy.
+- `docs(cache=False)` on `TxtdownReader` and `EDHReader` bypasses the in-memory
+  and disk caches (previously ignored once these readers began caching); gold
+  corrections are still applied, re-pointed first if a stale cache entry shows
+  the tokenization changed. A per-call `annotation_level`
+  that differs from the reader's now warns that it is ignored (it was never
+  applied).
 
 ### Notes
 

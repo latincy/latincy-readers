@@ -18,6 +18,20 @@ if TYPE_CHECKING:
     from spacy.tokens import Doc, Span
 
 
+def _remove_keep_tail(el: etree._Element) -> None:
+    """Remove ``el`` from its tree without losing the text that follows it."""
+    parent = el.getparent()
+    if parent is None:
+        return
+    if el.tail:
+        prev = el.getprevious()
+        if prev is not None:
+            prev.tail = (prev.tail or "") + el.tail
+        else:
+            parent.text = (parent.text or "") + el.tail
+    parent.remove(el)
+
+
 class TEIReader(BaseCorpusReader):
     """Base reader for TEI/XML documents.
 
@@ -176,15 +190,24 @@ class TEIReader(BaseCorpusReader):
             return None
 
         if self._remove_notes:
-            # Remove note elements
-            for notes_xpath in [".//note", ".//tei:note"]:
-                try:
-                    for note in body.xpath(notes_xpath, namespaces=self.TEI_NS):
-                        note.getparent().remove(note)
-                except Exception:
-                    pass
+            self._remove_note_elements(body)
 
         return body
+
+    def _remove_note_elements(self, element: etree._Element) -> None:
+        """Remove ``<note>`` elements under *element*, keeping following text.
+
+        lxml drops an element's tail along with the element, and in critical
+        editions the running text routinely sits in a note's tail
+        (``<milestone/><note>app. crit.</note>Hactenus a priscis…``), so each
+        tail is re-attached to the previous sibling or the parent.
+        """
+        for notes_xpath in [".//note", ".//tei:note"]:
+            try:
+                for note in element.xpath(notes_xpath, namespaces=self.TEI_NS):
+                    _remove_keep_tail(note)
+            except Exception:
+                pass
 
     def _extract_paragraphs(self, body: etree._Element) -> list[str]:
         """Extract paragraph texts from body element.

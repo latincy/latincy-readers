@@ -433,8 +433,10 @@ class EDHReader(TEIReader):
 
         Args:
             fileids: Files to process, or None for all.
-            annotation_level: Override default annotation level.
-            cache: Cache processed Docs.
+            annotation_level: Accepted for compatibility; ignored with a
+                warning if it differs from the reader's level.
+            cache: If False, bypass the in-memory and disk caches
+                (fresh annotation; nothing stored).
 
         Yields:
             spaCy Doc objects.
@@ -445,7 +447,8 @@ class EDHReader(TEIReader):
                 "Use texts() for raw strings."
             )
         # Route through the shared cache + correction-overlay choke-point.
-        yield from self._cached_docs(fileids, self._produce_docs)
+        self._warn_if_level_override(annotation_level)
+        yield from self._cached_docs(fileids, self._produce_docs, cache=cache)
 
     def _produce_docs(self, fileid: str, path: Path) -> Iterator["Doc"]:
         """Reader-specific production for a cache miss: NLP + line spans."""

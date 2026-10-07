@@ -18,6 +18,17 @@ class TestCamenaReader:
             annotation_level=AnnotationLevel.BASIC,
         )
 
+    def test_note_removal_keeps_tail_text(self, reader):
+        """CAMENA's own note stripping keeps the text after each note."""
+        from lxml import etree
+
+        el = etree.fromstring(
+            '<p xmlns="http://www.tei-c.org/ns/1.0">a<note>n</note> b'
+            "<note>m</note> c</p>"
+        )
+        reader._remove_note_elements(el)
+        assert " ".join("".join(el.itertext()).split()) == "a b c"
+
     @pytest.fixture
     def reader_with_front(self, camena_dir):
         """Reader that includes front matter."""

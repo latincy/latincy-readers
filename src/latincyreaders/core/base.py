@@ -11,6 +11,7 @@ import importlib.metadata
 import json
 import re
 import unicodedata
+import warnings
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from pathlib import Path
@@ -318,7 +319,21 @@ class BaseCorpusReader(ABC):
                 self._cache.popitem(last=False)
             self._cache[fileid] = doc
 
-    def _cached_docs(self, fileids, produce) -> Iterator["Doc"]:
+    def _warn_if_level_override(self, annotation_level: AnnotationLevel | None) -> None:
+        """Per-call ``annotation_level`` is accepted for compatibility but unused."""
+        if annotation_level is None:
+            return
+        requested = getattr(annotation_level, "name", str(annotation_level)).upper()
+        if requested != self._annotation_level.name:
+            warnings.warn(
+                f"docs(annotation_level={requested}) is ignored; this "
+                f"reader annotates at {self._annotation_level.name}. Create the "
+                f"reader with annotation_level= to change it.",
+                UserWarning,
+                stacklevel=3,
+            )
+
+    def _cached_docs(self, fileids, produce, cache: bool = True) -> Iterator["Doc"]:
         """Shared read path: LRU → stamped DocBin → produce, with correction overlay.
 
         The single caching + correction choke-point for readers whose ``docs()``
@@ -329,7 +344,38 @@ class BaseCorpusReader(ABC):
         Invariant: every disk write uses the pre-overlay (silver) doc; durable
         token ids are attached and gold corrections overlaid as the final in-memory
         step, so the DocBin base cache never carries correction state.
+
+        With ``cache=False`` both caches are bypassed (no read, no write): every
+        doc is freshly produced. Gold corrections are still overlaid.
         """
+        if not cache:
+            for path in self._iter_paths(fileids):
+                fileid = str(path.relative_to(self._root))
+                # Read-only use of any stale DocBin entry, to re-point corrections
+                # recorded under another model before overlaying them.
+                old_doc = None
+                store = self._get_correction_store()
+                cset = store.load(fileid) if store is not None else None
+                if self._disk_cache is not None and cset and cset.corrections:
+                    vocab = self.nlp.vocab if self.nlp is not None else self.vocab
+                    old_doc = self._disk_cache.load_raw(fileid, vocab)
+                for doc in produce(fileid, path):
+                    if doc._.fileid is None:
+                        doc._.fileid = fileid
+                    self._ensure_token_ids(doc)
+                    if old_doc is not None:
+                        stale = [t.text for t in old_doc] != [t.text for t in doc]
+                        self._repoint_on_rebuild(fileid, doc, old_doc)
+                        if stale:
+                            # The ids now refer to the new tokenization; retire the
+                            # entry so no later read re-points them a second time
+                            # (the cached path does this by overwriting it).
+                            self._disk_cache.invalidate(fileid)
+                        old_doc = None
+                    self._overlay_corrections(fileid, doc)
+                    yield doc
+            return
+
         model_name, model_version = self._active_generator()
         generator = f"{model_name}@{model_version}"
 
@@ -838,7 +884,7 @@ class BaseCorpusReader(ABC):
         generator = f"{model_name}@{model_version}"
         store = self._get_correction_store()
         count = 0
-        for fileid, doc in self._cache.items():
+        for fileid, doc in list(self._cache.items()):
             # Cached docs may carry an in-memory gold overlay (see
             # _overlay_corrections); revert it before writing so the disk
             # base cache never picks up corrected values as if they were
@@ -846,15 +892,22 @@ class BaseCorpusReader(ABC):
             # unaffected.
             if store is not None:
                 store.revert(fileid, doc)
-            self._disk_cache.put(
-                fileid, doc,
-                annotation_level=self._annotation_level.name,
-                model_name=self._model_name,
-                model_version=model_version,
-                generator=generator,
-            )
-            if store is not None:
-                store.overlay(fileid, doc)
+            try:
+                self._disk_cache.put(
+                    fileid, doc,
+                    annotation_level=self._annotation_level.name,
+                    model_name=self._model_name,
+                    model_version=model_version,
+                    generator=generator,
+                )
+            finally:
+                if store is not None:
+                    try:
+                        store.overlay(fileid, doc)
+                    except Exception:
+                        # Don't mask a put() error or leave a silver doc in the
+                        # LRU: drop it so the next read re-overlays (and re-raises).
+                        self._cache.pop(fileid, None)
             count += 1
         return count
 

@@ -78,6 +78,24 @@ class TestFormulaeReaderTexts:
         assert "editorial commentary" not in text
         assert "Notum" in text and "sit" in text
 
+    def test_note_removal_keeps_following_text(self, formulae_dir):
+        """Removing a <note> must keep its tail: the running text after it."""
+        from latincyreaders import FormulaeReader
+        from lxml import etree
+
+        reader = FormulaeReader(root=formulae_dir)
+        xml = (
+            '<TEI xmlns="http://www.tei-c.org/ns/1.0">'
+            "<text><body>"
+            "<div type='edition' xml:lang='lat'>"
+            "<w>Notum</w><note>x</note> <w>sit</w> et<note>y</note> alia"
+            "</div>"
+            "</body></text></TEI>"
+        )
+        text = reader._extract_edition_text(etree.fromstring(xml.encode()))
+        assert "x" not in text.split() and "y" not in text.split()
+        assert text.split() == ["Notum", "sit", "et", "alia"]
+
     def test_edition_text_includes_notes_when_disabled(self, formulae_dir):
         from latincyreaders import FormulaeReader
         from lxml import etree
