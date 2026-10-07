@@ -1,5 +1,5 @@
 """
-latincy-readers: Corpus readers for Latin texts with LatinCy/spaCy integration.
+latincy-readers: Corpus readers for Latin & Greek texts with LatinCy/spaCy integration.
 
 This package provides readers for various Latin text corpora with spaCy integration:
 
